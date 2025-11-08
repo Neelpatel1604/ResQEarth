@@ -6,6 +6,7 @@ import { UserMenu } from "@/components/auth/user-menu"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Satellite, AlertTriangle, Users, MapPin } from "lucide-react"
+import { MapView } from "@/components/map/map-view"
 
 export default function Home() {
   const { user, loading } = useAuth()
@@ -128,9 +129,9 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Navigation Header */}
-      <header className="border-b">
+      <header className="border-b z-50">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center space-x-2">
             <Satellite className="h-8 w-8 text-primary" />
@@ -140,102 +141,27 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto space-y-8">
-          {/* Welcome Section */}
-          <div className="text-center space-y-4">
-            <h2 className="text-3xl font-bold">Welcome to ResQ Earth</h2>
-            <p className="text-xl text-muted-foreground">
-              Advanced space-based disaster response and monitoring platform
-            </p>
-          </div>
-
-          {/* Dashboard Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <Satellite className="h-10 w-10 text-primary mb-2" />
-                <CardTitle>Live Satellite Feed</CardTitle>
-                <CardDescription>
-                  Real-time satellite imagery and data streams
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button className="w-full">View Feed</Button>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <AlertTriangle className="h-10 w-10 text-destructive mb-2" />
-                <CardTitle>Disaster Alerts</CardTitle>
-                <CardDescription>
-                  Active alerts and emergency notifications
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button variant="destructive" className="w-full">View Alerts</Button>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <Users className="h-10 w-10 text-primary mb-2" />
-                <CardTitle>Response Teams</CardTitle>
-                <CardDescription>
-                  Coordinate with emergency response teams
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button variant="outline" className="w-full">Manage Teams</Button>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <MapPin className="h-10 w-10 text-primary mb-2" />
-                <CardTitle>Global Map</CardTitle>
-                <CardDescription>
-                  Interactive disaster monitoring worldwide
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button variant="outline" className="w-full">Open Map</Button>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center mb-2">
-                  📊
-                </div>
-                <CardTitle>Analytics</CardTitle>
-                <CardDescription>
-                  Data insights and predictive analytics
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button variant="outline" className="w-full">View Analytics</Button>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center mb-2">
-                  ⚙️
-                </div>
-                <CardTitle>Settings</CardTitle>
-                <CardDescription>
-                  Configure your dashboard and preferences
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button variant="outline" className="w-full">Open Settings</Button>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+      {/* Map View */}
+      <main className="flex-1 relative">
+        <MapView
+          onSaveSolution={async (disaster, actions) => {
+            try {
+              const { saveSolution, createSolutionFromData } = await import('@/lib/supabase/solutions')
+              const solutionData = createSolutionFromData(disaster, actions)
+              await saveSolution(solutionData)
+              alert('Solution saved successfully!')
+            } catch (error) {
+              console.error('Error saving solution:', error)
+              alert('Failed to save solution. Please try again.')
+            }
+          }}
+          onContactAuthority={(disaster) => {
+            // Open contact authority modal or redirect
+            const contactInfo = `Contact emergency authorities for ${disaster.location.name || 'this location'}`
+            alert(contactInfo)
+            // TODO: Implement proper contact authority flow
+          }}
+        />
       </main>
     </div>
   )
