@@ -5,8 +5,8 @@ import { DisasterMap } from './disaster-map'
 import { DisasterPanel } from './disaster-panel'
 import { ContactAuthorityModal } from '@/components/contact/contact-authority-modal'
 import { DisasterThreat, PreventionAction, PreventionActionType, PREVENTION_ACTIONS } from '@/lib/map/dummy-data'
-import { DUMMY_DISASTERS } from '@/lib/map/dummy-data'
 import { Authority } from '@/lib/services/authority-service'
+import { getDisasters } from '@/lib/api/disasters'
 
 interface MapViewProps {
   onSaveSolution?: (disaster: DisasterThreat, actions: PreventionAction[]) => void
@@ -14,7 +14,9 @@ interface MapViewProps {
 }
 
 export function MapView({ onSaveSolution, onContactAuthority }: MapViewProps) {
-  const [disasters] = useState<DisasterThreat[]>(DUMMY_DISASTERS)
+  const [disasters, setDisasters] = useState<DisasterThreat[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [selectedDisaster, setSelectedDisaster] = useState<DisasterThreat | null>(null)
   const [preventionActions, setPreventionActions] = useState<
     Array<{ id: string; type: string; location: { lat: number; lng: number } }>
@@ -38,6 +40,36 @@ export function MapView({ onSaveSolution, onContactAuthority }: MapViewProps) {
     return () => {
       delete (window as any).__PREVENTION_ACTIONS
     }
+  }, [])
+
+  // Fetch disasters from API with auto-refresh
+  useEffect(() => {
+    const fetchDisasters = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const response = await getDisasters({
+          use_firms: true,
+          days: 1,
+        })
+        setDisasters(response.disasters)
+      } catch (err) {
+        console.error('Failed to fetch disasters:', err)
+        setError('Failed to load disaster data. Please check your backend connection.')
+        // Return empty array instead of dummy data
+        setDisasters([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    // Initial fetch
+    fetchDisasters()
+
+    // Auto-refresh every 10 minutes (600000 ms)
+    const interval = setInterval(fetchDisasters, 10 * 60 * 1000)
+
+    return () => clearInterval(interval)
   }, [])
 
   const handleDisasterClick = useCallback((disaster: DisasterThreat) => {
@@ -154,6 +186,29 @@ export function MapView({ onSaveSolution, onContactAuthority }: MapViewProps) {
 
   return (
     <div className="relative w-full h-screen">
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-50">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading wildfire data...</p>
+          </div>
+        </div>
+      )}
+      {error && !loading && (
+        <div className="absolute top-4 right-4 bg-yellow-500/90 text-white px-4 py-2 rounded-lg shadow-lg z-50 max-w-md">
+          <p className="text-sm">{error}</p>
+        </div>
+      )}
+      {!loading && disasters.length > 0 && (
+        <div className="absolute top-4 left-4 bg-black/80 text-white px-4 py-2 rounded-lg shadow-lg z-50">
+          <div className="text-sm font-semibold">
+            🔥 {disasters.length.toLocaleString()} Active Wildfires (Last 24 Hours)
+          </div>
+          <div className="text-xs text-gray-300 mt-1">
+            Data from NASA FIRMS • Auto-refreshes every 10 min
+          </div>
+        </div>
+      )}
       <DisasterMap
         disasters={disasters}
         onDisasterClick={handleDisasterClick}

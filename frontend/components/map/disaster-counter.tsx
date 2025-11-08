@@ -18,21 +18,20 @@ export function DisasterCounter({ className }: DisasterCounterProps) {
     const fetchCount = async () => {
       try {
         const response = await apiClient.get<{ total: number; timestamp: string }>(
-          '/disasters/count/total'
+          '/api/disasters/count/total'
         )
         setCount(response.total)
         backendAvailableRef.current = true
       } catch (error) {
-        // Silently fallback to dummy count if API fails (backend not running or network error)
-        // Only log if it's not a network error (which is expected in prototype mode)
+        // Return 0 if API fails instead of dummy count
         if (error instanceof TypeError && error.message.includes('fetch')) {
-          // Network error - backend probably not running, use fallback
-          setCount(5842)
+          // Network error - backend probably not running
+          setCount(0)
           backendAvailableRef.current = false
         } else {
-          // Other errors - log but still use fallback
-          console.warn('Error fetching disaster count, using fallback:', error)
-          setCount(5842)
+          // Other errors - log and return 0
+          console.warn('Error fetching disaster count:', error)
+          setCount(0)
           backendAvailableRef.current = false
         }
       } finally {

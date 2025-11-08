@@ -3,10 +3,15 @@ import os
 from typing import Optional, Union
 try:
     from pydantic_settings import BaseSettings
-    from pydantic import field_validator
+    from pydantic import field_validator, model_validator
 except ImportError:
     # Fallback for older pydantic versions
     from pydantic import BaseSettings, validator as field_validator
+    # For older pydantic, use root_validator instead
+    try:
+        from pydantic import root_validator as model_validator
+    except ImportError:
+        model_validator = None
 
 
 class Settings(BaseSettings):
@@ -50,15 +55,38 @@ class Settings(BaseSettings):
     # External API Keys (for satellite data)
     NASA_API_KEY: Optional[str] = None
     MAPBOX_API_KEY: Optional[str] = None
+    FIRMS_MAP_KEY: Optional[str] = None
     
     # Server Configuration
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     DEBUG: bool = True
     
+    @model_validator(mode='before')
+    @classmethod
+    def handle_firms_api_alias(cls, data: Union[dict, object]) -> dict:
+        """Handle FIRMS_API as alias for FIRMS_MAP_KEY."""
+        if isinstance(data, dict):
+            # If FIRMS_API is in the data but FIRMS_MAP_KEY is not, use FIRMS_API
+            if 'FIRMS_API' in data and 'FIRMS_MAP_KEY' not in data:
+                data['FIRMS_MAP_KEY'] = data.pop('FIRMS_API')
+            # Also check environment variables as fallback
+            elif 'FIRMS_MAP_KEY' not in data and 'FIRMS_API' in os.environ:
+                data['FIRMS_MAP_KEY'] = os.environ.get('FIRMS_API')
+        return data
+    
+    @model_validator(mode='after')
+    def handle_firms_api_alias_after(self):
+        """Handle FIRMS_API as alias for FIRMS_MAP_KEY (fallback)."""
+        # If FIRMS_MAP_KEY is still not set, check environment one more time
+        if not self.FIRMS_MAP_KEY:
+            self.FIRMS_MAP_KEY = os.environ.get('FIRMS_API')
+        return self
+    
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"  # Ignore extra fields like FIRMS_API
 
 
 settings = Settings()

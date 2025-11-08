@@ -42,6 +42,12 @@ export interface DisasterThreat {
   confidence?: number;
 }
 
+export interface DisasterListResponse {
+  disasters: DisasterThreat[];
+  total: number;
+  timestamp?: string;
+}
+
 export interface PreventionAction {
   type: PreventionActionType;
   location: Location;
