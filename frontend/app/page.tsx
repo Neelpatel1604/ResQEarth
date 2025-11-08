@@ -1,65 +1,242 @@
-import Image from "next/image";
+'use client'
+
+import { useAuth } from "@/lib/supabase/auth-context"
+import { AuthForm } from "@/components/auth/auth-form"
+import { UserMenu } from "@/components/auth/user-menu"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Satellite, AlertTriangle, Users, MapPin } from "lucide-react"
 
 export default function Home() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+  const { user, loading } = useAuth()
+
+  // Check if Supabase is configured
+  const hasSupabase = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!hasSupabase) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <Card className="w-full max-w-md mx-auto">
+          <CardHeader className="text-center">
+            <Satellite className="h-12 w-12 text-primary mx-auto mb-4" />
+            <CardTitle>ResQ Earth</CardTitle>
+            <CardDescription>
+              Space-themed disaster response platform
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <div className="text-destructive text-sm">
+              ⚠️ Supabase configuration required
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Please add your Supabase URL and API key to the .env.local file to enable authentication.
+            </p>
+            <div className="text-xs bg-muted p-3 rounded text-left font-mono">
+              NEXT_PUBLIC_SUPABASE_URL=your_url_here<br />
+              NEXT_PUBLIC_SUPABASE_ANON_KEY=your_key_here
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+          {/* Hero Section */}
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <h1 className="text-4xl font-bold tracking-tight">
+                ResQ Earth
+              </h1>
+              <p className="text-xl text-muted-foreground">
+                Advanced space-based disaster response platform
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <Satellite className="h-8 w-8 text-primary" />
+                  <CardTitle className="text-sm">Real-time Monitoring</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>
+                    Satellite imagery and AI-powered disaster detection
+                  </CardDescription>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <AlertTriangle className="h-8 w-8 text-destructive" />
+                  <CardTitle className="text-sm">Early Warning</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>
+                    Predictive analytics for disaster prevention
+                  </CardDescription>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <Users className="h-8 w-8 text-primary" />
+                  <CardTitle className="text-sm">Response Teams</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>
+                    Coordinated emergency response coordination
+                  </CardDescription>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <MapPin className="h-8 w-8 text-primary" />
+                  <CardTitle className="text-sm">Global Coverage</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>
+                    Worldwide disaster monitoring and response
+                  </CardDescription>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Auth Form */}
+          <div className="flex justify-center">
+            <AuthForm />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Navigation Header */}
+      <header className="border-b">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <div className="flex items-center space-x-2">
+            <Satellite className="h-8 w-8 text-primary" />
+            <h1 className="text-2xl font-bold">ResQ Earth</h1>
+          </div>
+          <UserMenu />
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto space-y-8">
+          {/* Welcome Section */}
+          <div className="text-center space-y-4">
+            <h2 className="text-3xl font-bold">Welcome to ResQ Earth</h2>
+            <p className="text-xl text-muted-foreground">
+              Advanced space-based disaster response and monitoring platform
+            </p>
+          </div>
+
+          {/* Dashboard Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <Satellite className="h-10 w-10 text-primary mb-2" />
+                <CardTitle>Live Satellite Feed</CardTitle>
+                <CardDescription>
+                  Real-time satellite imagery and data streams
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button className="w-full">View Feed</Button>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <AlertTriangle className="h-10 w-10 text-destructive mb-2" />
+                <CardTitle>Disaster Alerts</CardTitle>
+                <CardDescription>
+                  Active alerts and emergency notifications
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="destructive" className="w-full">View Alerts</Button>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <Users className="h-10 w-10 text-primary mb-2" />
+                <CardTitle>Response Teams</CardTitle>
+                <CardDescription>
+                  Coordinate with emergency response teams
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" className="w-full">Manage Teams</Button>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <MapPin className="h-10 w-10 text-primary mb-2" />
+                <CardTitle>Global Map</CardTitle>
+                <CardDescription>
+                  Interactive disaster monitoring worldwide
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" className="w-full">Open Map</Button>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center mb-2">
+                  📊
+                </div>
+                <CardTitle>Analytics</CardTitle>
+                <CardDescription>
+                  Data insights and predictive analytics
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" className="w-full">View Analytics</Button>
+              </CardContent>
+            </Card>
+
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center mb-2">
+                  ⚙️
+                </div>
+                <CardTitle>Settings</CardTitle>
+                <CardDescription>
+                  Configure your dashboard and preferences
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" className="w-full">Open Settings</Button>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </main>
     </div>
-  );
+  )
 }
