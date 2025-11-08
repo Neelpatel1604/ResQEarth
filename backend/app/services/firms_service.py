@@ -148,6 +148,17 @@ class FirmsService:
             if response.text.strip():
                 df = pd.read_csv(StringIO(response.text))
                 
+                # Strip whitespace from column names (FIRMS CSV might have spaces)
+                df.columns = df.columns.str.strip()
+                
+                # Log column names for debugging
+                logger.info(f"FIRMS CSV columns: {list(df.columns)}")
+                logger.info(f"FIRMS CSV shape: {df.shape}")
+                
+                # Log sample data to see what we're working with
+                if not df.empty:
+                    logger.info(f"Sample row: {df.iloc[0].to_dict()}")
+                
                 if not df.empty:
                     # Filter for high-risk fires only
                     # High confidence (h), high brightness (>345K), strong energy release (frp > 10)
@@ -243,14 +254,31 @@ class FirmsService:
         
         for hotspot in hotspots:
             try:
-                # Extract required fields
-                latitude = float(hotspot.get('latitude', 0))
-                longitude = float(hotspot.get('longitude', 0))
+                # Extract required fields - FIRMS CSV uses lowercase 'latitude' and 'longitude'
+                # Based on test.py, columns are: latitude, longitude, bright_ti4, acq_date, confidence
+                try:
+                    latitude = float(hotspot.get('latitude', hotspot.get('Latitude', hotspot.get('LATITUDE', 0))))
+                    longitude = float(hotspot.get('longitude', hotspot.get('Longitude', hotspot.get('LONGITUDE', 0))))
+                except (ValueError, TypeError, KeyError) as e:
+                    # If still not found, log the available keys
+                    logger.warning(f"Could not extract coordinates from hotspot. Error: {e}")
+                    logger.warning(f"Available keys: {list(hotspot.keys())[:10]}")
+                    logger.warning(f"Hotspot sample: {dict(list(hotspot.items())[:5])}")
+                    continue
+                
+                # Check if coordinates are valid (not 0,0 which is default)
+                if latitude == 0 and longitude == 0:
+                    logger.warning(f"Coordinates are 0,0 (default). Skipping hotspot.")
+                    continue
                 
                 # Validate coordinates
                 if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
                     logger.warning(f"Invalid coordinates: {latitude}, {longitude}. Skipping.")
                     continue
+                
+                # Log first few successful extractions for debugging
+                if len(disaster_threats) < 3:
+                    logger.info(f"Successfully extracted coordinates: lat={latitude}, lon={longitude} for hotspot {hotspot.get('acq_date', 'unknown')}")
                 
                 # Parse acquisition date and time
                 acq_date = str(hotspot.get('acq_date', '')).strip()
@@ -386,6 +414,12 @@ class FirmsService:
                 continue
         
         logger.info(f"Transformed {len(disaster_threats)} hotspots to disaster threats")
+        
+        # Log sample of first disaster threat to verify coordinates
+        if disaster_threats:
+            sample = disaster_threats[0]
+            logger.info(f"Sample disaster threat: id={sample.id}, lat={sample.location.latitude}, lon={sample.location.longitude}, type={sample.type}")
+        
         return disaster_threats
 
 

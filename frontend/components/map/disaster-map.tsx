@@ -112,6 +112,14 @@ export function DisasterMap({
           clusterMaxZoom: 14,
           clusterRadius: 50,
         })
+        
+        // Listen for data events to ensure source is ready
+        const source = map.current.getSource(sourceId) as mapboxgl.GeoJSONSource
+        if (source) {
+          source.on('data', () => {
+            console.log('Source data event fired')
+          })
+        }
 
         // Add cluster circles layer
         map.current.addLayer({
@@ -184,11 +192,11 @@ export function DisasterMap({
               ['linear'],
               ['get', 'risk'],
               0,
-              8,
-              50,
               12,
-              100,
+              50,
               16,
+              100,
+              20,
             ],
             'circle-stroke-width': 2,
             'circle-stroke-color': '#fff',
@@ -317,35 +325,107 @@ export function DisasterMap({
 
   // Update disaster markers using Mapbox GL layers for better performance
   useEffect(() => {
-    if (!map.current || !map.current.isStyleLoaded()) return
+    if (!map.current) {
+      console.log('Map not initialized yet')
+      return
+    }
 
-    const source = map.current.getSource(sourceId) as mapboxgl.GeoJSONSource
-    if (!source) return
+    const updateDisasterData = () => {
+      if (!map.current || !map.current.isStyleLoaded()) return
 
-    // Convert disasters to GeoJSON features
-    const features = disasters.map((disaster) => ({
-      type: 'Feature' as const,
-      geometry: {
-        type: 'Point' as const,
-        coordinates: [disaster.location.longitude, disaster.location.latitude],
-      },
-      properties: {
-        id: disaster.id,
-        type: disaster.type,
-        risk: disaster.risk_percentage,
-        confidence: disaster.confidence || 0,
-        selected: selectedDisasterId === disaster.id,
-      },
-    }))
+      const source = map.current.getSource(sourceId) as mapboxgl.GeoJSONSource
+      if (!source) {
+        console.log('Source not found')
+        return
+      }
 
-    // Update source data
-    source.setData({
-      type: 'FeatureCollection',
-      features,
-    })
+      // Convert disasters to GeoJSON features
+      console.log(`Processing ${disasters.length} disasters for map`)
+      
+      const features = disasters
+        .filter((disaster) => {
+          // Validate coordinates
+          const lat = disaster.location?.latitude
+          const lng = disaster.location?.longitude
+          
+          // Log first few disasters to see their structure
+          if (disasters.indexOf(disaster) < 3) {
+            console.log(`Disaster ${disasters.indexOf(disaster)}:`, {
+              id: disaster.id,
+              hasLocation: !!disaster.location,
+              lat: lat,
+              lng: lng,
+              locationObj: disaster.location,
+            })
+          }
+          
+          const isValid = 
+            disaster.location &&
+            typeof lat === 'number' &&
+            typeof lng === 'number' &&
+            !isNaN(lat) &&
+            !isNaN(lng) &&
+            lat >= -90 &&
+            lat <= 90 &&
+            lng >= -180 &&
+            lng <= 180 &&
+            lat !== 0 &&
+            lng !== 0  // Exclude 0,0 coordinates
+          
+          if (!isValid) {
+            console.warn(`Invalid coordinates for disaster ${disaster.id}:`, {
+              lat,
+              lng,
+              hasLocation: !!disaster.location,
+            })
+          }
+          return isValid
+        })
+        .map((disaster) => ({
+          type: 'Feature' as const,
+          geometry: {
+            type: 'Point' as const,
+            coordinates: [disaster.location.longitude, disaster.location.latitude],
+          },
+          properties: {
+            id: disaster.id,
+            type: disaster.type,
+            risk: disaster.risk_percentage,
+            confidence: disaster.confidence || 0,
+            selected: selectedDisasterId === disaster.id,
+          },
+        }))
 
-    // Update layer styles for selected disaster
-    if (map.current.getLayer(unclusteredPointLayerId)) {
+      console.log(`Updating map with ${features.length} disaster features (from ${disasters.length} total disasters)`)
+      
+      if (features.length === 0) {
+        console.warn('No valid features to display on map')
+        return
+      }
+
+      // Log first few features for debugging
+      if (features.length > 0) {
+        console.log('Sample features:', features.slice(0, 3).map(f => ({
+          id: f.properties.id,
+          coords: f.geometry.coordinates,
+          type: f.properties.type,
+          risk: f.properties.risk
+        })))
+      }
+
+      // Update source data
+      try {
+        source.setData({
+          type: 'FeatureCollection',
+          features,
+        })
+        console.log(`✅ Map source updated successfully with ${features.length} features`)
+      } catch (error) {
+        console.error('❌ Error updating map source:', error)
+      }
+
+      // Update layer styles for selected disaster
+      if (map.current.getLayer(unclusteredPointLayerId)) {
       map.current.setPaintProperty(unclusteredPointLayerId, 'circle-stroke-width', [
         'case',
         ['get', 'selected'],
@@ -371,14 +451,58 @@ export function DisasterMap({
           ['linear'],
           ['get', 'risk'],
           0,
-          8,
-          50,
           12,
-          100,
+          50,
           16,
+          100,
+          20,
         ],
       ])
+      }
     }
+
+    // Wait for map to be ready
+    if (!map.current.isStyleLoaded()) {
+      console.log('Map style not loaded yet, waiting...')
+      const waitForStyle = () => {
+        if (map.current?.isStyleLoaded()) {
+          setTimeout(() => {
+            const source = map.current?.getSource(sourceId) as mapboxgl.GeoJSONSource
+            if (source) {
+              updateDisasterData()
+            }
+          }, 100)
+        } else {
+          setTimeout(waitForStyle, 100)
+        }
+      }
+      waitForStyle()
+      return
+    }
+
+    // Try to update immediately
+    const source = map.current.getSource(sourceId) as mapboxgl.GeoJSONSource
+    if (!source) {
+      console.log('Source not found, waiting...')
+      // Wait for source to be added (it's added in the 'load' event)
+      const waitForSource = () => {
+        if (map.current) {
+          const retrySource = map.current.getSource(sourceId) as mapboxgl.GeoJSONSource
+          if (retrySource) {
+            console.log('Source found, updating data')
+            updateDisasterData()
+          } else {
+            setTimeout(waitForSource, 100)
+          }
+        }
+      }
+      waitForSource()
+      return
+    }
+
+    // Source exists, update immediately
+    console.log('Source exists, updating data immediately')
+    updateDisasterData()
   }, [disasters, selectedDisasterId])
 
   // Handle clicks on unclustered points

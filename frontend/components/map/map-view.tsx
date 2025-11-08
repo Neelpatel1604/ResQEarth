@@ -52,6 +52,17 @@ export function MapView({ onSaveSolution, onContactAuthority }: MapViewProps) {
           use_firms: true,
           days: 1,
         })
+        console.log(`Received ${response.disasters.length} disasters from API`)
+        if (response.disasters.length > 0) {
+          const sample = response.disasters[0]
+          console.log('Sample disaster:', {
+            id: sample.id,
+            type: sample.type,
+            lat: sample.location?.latitude,
+            lng: sample.location?.longitude,
+            risk: sample.risk_percentage,
+          })
+        }
         setDisasters(response.disasters)
       } catch (err) {
         console.error('Failed to fetch disasters:', err)
