@@ -1,16 +1,16 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
-import { User } from '@supabase/supabase-js'
-import { createClient } from './client'
+import { createContext, useEffect, useState, type ReactNode } from 'react'
+import { type User } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/client'
 
-type SignUpResult = {
+export type SignUpResult = {
   success: boolean
   needsEmailConfirmation: boolean
   message?: string
 }
 
-type AuthContextType = {
+export type AuthContextType = {
   user: User | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<void>
@@ -18,16 +18,16 @@ type AuthContextType = {
   signOut: () => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
   // Check if environment variables are available
   const hasEnvVars = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  let supabase: any = null
+  let supabase: ReturnType<typeof createClient> | null = null
   try {
     if (hasEnvVars) {
       supabase = createClient()
@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event: string, session: any) => {
+      async (event: string, session) => {
         setUser(session?.user ?? null)
         setLoading(false)
       }
@@ -92,7 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Check if email confirmation is required
-    const needsEmailConfirmation = data.user && !data.session
+    const needsEmailConfirmation = Boolean(data.user && !data.session)
 
     return {
       success: true,
@@ -114,12 +114,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {children}
     </AuthContext.Provider>
   )
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
-  }
-  return context
 }
