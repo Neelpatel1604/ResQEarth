@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useEffect, useState, useRef, type ReactNode } from 'react'
 import { type User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 
@@ -23,20 +23,29 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null)
 
   // Check if environment variables are available
   const hasEnvVars = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  let supabase: ReturnType<typeof createClient> | null = null
-  try {
-    if (hasEnvVars) {
-      supabase = createClient()
-    }
-  } catch (error) {
-    console.error('Failed to create Supabase client:', error)
-  }
-
   useEffect(() => {
+    // Create Supabase client inside useEffect to avoid dependency issues
+    if (!hasEnvVars) {
+      setLoading(false)
+      return
+    }
+
+    let supabase: ReturnType<typeof createClient> | null = null
+
+    try {
+      supabase = createClient()
+      supabaseRef.current = supabase
+    } catch (error) {
+      console.error('Failed to create Supabase client:', error)
+      setLoading(false)
+      return
+    }
+
     if (!supabase) {
       setLoading(false)
       return
@@ -45,8 +54,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Get initial session
     const getSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-        setUser(session?.user ?? null)
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error) {
+          console.error('Failed to get session:', error)
+        } else {
+          setUser(session?.user ?? null)
+        }
       } catch (error) {
         console.error('Failed to get session:', error)
       } finally {
@@ -64,10 +77,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     )
 
-    return () => subscription.unsubscribe()
-  }, [supabase])
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [hasEnvVars])
 
   const signIn = async (email: string, password: string) => {
+    const supabase = supabaseRef.current
     if (!supabase) throw new Error('Supabase client not available')
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -77,6 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signUp = async (email: string, password: string): Promise<SignUpResult> => {
+    const supabase = supabaseRef.current
     if (!supabase) throw new Error('Supabase client not available')
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -104,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signOut = async () => {
+    const supabase = supabaseRef.current
     if (!supabase) throw new Error('Supabase client not available')
     const { error } = await supabase.auth.signOut()
     if (error) throw error
