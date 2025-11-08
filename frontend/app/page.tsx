@@ -132,13 +132,32 @@ export default function Home() {
       {/* Navigation Header */}
       <header className="border-b">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          {/* Logo */}
           <div className="flex items-center space-x-2">
             <Satellite className="h-8 w-8 text-primary" />
             <h1 className="text-2xl font-bold">ResQ Earth</h1>
           </div>
+
+          {/* Navigation Links */}
+          <nav className="flex gap-8">
+            <a href="/" className="text-foreground hover:text-primary transition-colors">
+              Home
+            </a>
+            <a href="/about" className="text-foreground hover:text-primary transition-colors">
+              About
+            </a>
+            <a href="/about" className="text-foreground hover:text-primary transition-colors">
+              Services
+            </a>
+            <a href="/about" className="text-foreground hover:text-primary transition-colors">
+              Map
+            </a>
+          </nav>
+
+          {/* User Menu */}
           <UserMenu />
         </div>
-      </header>
+</header>
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
