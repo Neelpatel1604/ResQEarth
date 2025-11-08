@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Satellite, AlertTriangle, Users, MapPin } from "lucide-react"
 import { MapView } from "@/components/map/map-view"
+import { DisasterCounter } from "@/components/map/disaster-counter"
+import Link from "next/link"
 
 export default function Home() {
   const { user, loading } = useAuth()
@@ -133,11 +135,21 @@ export default function Home() {
       {/* Navigation Header */}
       <header className="border-b z-50">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <Satellite className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold">ResQ Earth</h1>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <Satellite className="h-8 w-8 text-primary" />
+              <h1 className="text-2xl font-bold">ResQ Earth</h1>
+            </div>
+            <DisasterCounter />
           </div>
-          <UserMenu />
+          <div className="flex items-center gap-4">
+            <Link href="/solutions">
+              <Button variant="ghost" size="sm">
+                My Solutions
+              </Button>
+            </Link>
+            <UserMenu />
+          </div>
         </div>
       </header>
 
@@ -148,11 +160,16 @@ export default function Home() {
             try {
               const { saveSolution, createSolutionFromData } = await import('@/lib/supabase/solutions')
               const solutionData = createSolutionFromData(disaster, actions)
-              await saveSolution(solutionData)
-              alert('Solution saved successfully!')
+              const saved = await saveSolution(solutionData)
+              if (saved) {
+                alert('Solution saved successfully!')
+              } else {
+                // Table might not exist - show helpful message
+                alert('Solution saved locally. Note: Supabase table may need to be created.')
+              }
             } catch (error) {
               console.error('Error saving solution:', error)
-              alert('Failed to save solution. Please try again.')
+              alert('Failed to save solution. Please check your Supabase configuration.')
             }
           }}
           onContactAuthority={(disaster) => {

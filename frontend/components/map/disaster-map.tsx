@@ -16,6 +16,7 @@ interface DisasterMapProps {
     location: { lat: number; lng: number }
   }>
   onActionDrop?: (actionType: string, location: { lat: number; lng: number }) => void
+  navigateToLocation?: { lat: number; lng: number } | null
 }
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ''
@@ -60,6 +61,7 @@ export function DisasterMap({
   selectedDisasterId,
   preventionActions = [],
   onActionDrop,
+  navigateToLocation,
 }: DisasterMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const map = useRef<mapboxgl.Map | null>(null)
@@ -92,16 +94,64 @@ export function DisasterMap({
 
     // Handle map click for dropping actions
     if (onActionDrop) {
-      map.current.on('click', (e) => {
+      // Handle click to drop action
+      const clickHandler = (e: mapboxgl.MapMouseEvent) => {
         // Check if there's a dragged action (this would be set by the drag event)
         const draggedAction = (window as any).__draggedAction
         if (draggedAction) {
+          // Prevent default map behavior
+          if (e.originalEvent) {
+            e.originalEvent.preventDefault()
+            e.originalEvent.stopPropagation()
+          }
           onActionDrop(draggedAction, {
             lat: e.lngLat.lat,
             lng: e.lngLat.lng,
           })
           // Clear the dragged action
           delete (window as any).__draggedAction
+          ;(window as any).__isDragging = false
+          document.body.style.cursor = ''
+          const canvas = document.querySelector('.mapboxgl-canvas') as HTMLElement
+          if (canvas) {
+            canvas.style.cursor = ''
+            canvas.classList.remove('action-dropping')
+          }
+          // Remove visual indicator
+          const indicator = document.getElementById('action-drop-indicator')
+          if (indicator) {
+            indicator.remove()
+          }
+          if (map.current?.getCanvasContainer()) {
+            map.current.getCanvasContainer().style.cursor = ''
+          }
+        }
+      }
+      map.current.on('click', clickHandler)
+      
+      // Also handle mousedown to prevent map panning when dropping
+      const mousedownHandler = (e: mapboxgl.MapMouseEvent) => {
+        if ((window as any).__isDragging) {
+          // Prevent map panning when dropping action
+          e.preventDefault()
+        }
+      }
+      map.current.on('mousedown', mousedownHandler)
+
+      // Add visual feedback when dragging over map
+      map.current.on('mouseenter', () => {
+        if ((window as any).__isDragging) {
+          if (map.current?.getCanvasContainer()) {
+            map.current.getCanvasContainer().style.cursor = 'crosshair'
+          }
+        }
+      })
+
+      map.current.on('mouseleave', () => {
+        if ((window as any).__isDragging) {
+          if (map.current?.getCanvasContainer()) {
+            map.current.getCanvasContainer().style.cursor = 'not-allowed'
+          }
         }
       })
     }
@@ -126,25 +176,34 @@ export function DisasterMap({
       // Create custom marker element
       const el = document.createElement('div')
       el.className = 'disaster-marker'
-      el.style.width = isSelected ? '48px' : '40px'
-      el.style.height = isSelected ? '48px' : '40px'
-      el.style.cursor = 'pointer'
-      el.style.transition = 'all 0.2s ease'
-      el.style.zIndex = isSelected ? '1000' : '1'
+      el.style.cssText = `
+        position: relative;
+        width: ${isSelected ? '48px' : '40px'};
+        height: ${isSelected ? '48px' : '40px'};
+        cursor: pointer;
+        transition: filter 0.2s ease;
+        z-index: ${isSelected ? '1000' : '1'};
+        pointer-events: auto;
+      `
 
-      // Create icon element
+      // Create icon element (circular background)
       const iconEl = document.createElement('div')
-      iconEl.style.width = '100%'
-      iconEl.style.height = '100%'
-      iconEl.style.borderRadius = '50%'
-      iconEl.style.backgroundColor = color
-      iconEl.style.border = isSelected ? '3px solid #fff' : '2px solid #fff'
-      iconEl.style.display = 'flex'
-      iconEl.style.alignItems = 'center'
-      iconEl.style.justifyContent = 'center'
-      iconEl.style.boxShadow = isSelected
-        ? '0 0 0 4px rgba(255, 255, 255, 0.3)'
-        : '0 2px 8px rgba(0, 0, 0, 0.3)'
+      iconEl.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        background-color: ${color};
+        border: ${isSelected ? '3px' : '2px'} solid #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: ${isSelected
+          ? '0 0 0 4px rgba(255, 255, 255, 0.3)'
+          : '0 2px 8px rgba(0, 0, 0, 0.3)'};
+      `
 
       // Create SVG icon (simplified)
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
@@ -152,8 +211,7 @@ export function DisasterMap({
       svg.setAttribute('height', '24')
       svg.setAttribute('viewBox', '0 0 24 24')
       svg.setAttribute('fill', 'white')
-      svg.style.width = '60%'
-      svg.style.height = '60%'
+      svg.style.cssText = 'width: 60%; height: 60%;'
 
       // Simple icon based on type
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
@@ -178,41 +236,77 @@ export function DisasterMap({
       el.appendChild(iconEl)
 
       // Add risk percentage badge
+      const riskPercent = Math.round(disaster.risk_percentage)
       const badge = document.createElement('div')
-      badge.style.position = 'absolute'
-      badge.style.top = '-8px'
-      badge.style.right = '-8px'
-      badge.style.backgroundColor = '#ef4444'
-      badge.style.color = 'white'
-      badge.style.borderRadius = '50%'
-      badge.style.width = '20px'
-      badge.style.height = '20px'
-      badge.style.fontSize = '10px'
-      badge.style.fontWeight = 'bold'
-      badge.style.display = 'flex'
-      badge.style.alignItems = 'center'
-      badge.style.justifyContent = 'center'
-      badge.style.border = '2px solid white'
-      badge.textContent = Math.round(disaster.risk_percentage).toString()
+      badge.className = 'disaster-risk-badge'
+      badge.style.cssText = `
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        background-color: #ef4444;
+        color: white;
+        border-radius: 50%;
+        min-width: 22px;
+        height: 22px;
+        font-size: 11px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid white;
+        padding: 0 5px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        line-height: 1;
+        z-index: 10;
+        pointer-events: none;
+        white-space: nowrap;
+        box-sizing: border-box;
+      `
+      // Create span for text to ensure it's properly contained
+      const badgeText = document.createElement('span')
+      badgeText.textContent = riskPercent.toString()
+      badgeText.style.cssText = `
+        display: inline-block;
+        line-height: 1;
+      `
+      badge.appendChild(badgeText)
       el.appendChild(badge)
 
-      // Create marker
-      const marker = new mapboxgl.Marker(el)
+      // Create marker with proper anchor point
+      const marker = new mapboxgl.Marker({
+        element: el,
+        anchor: 'center', // Anchor at center to prevent movement
+      })
         .setLngLat([disaster.location.longitude, disaster.location.latitude])
         .addTo(map.current)
 
       // Add click handler
-      el.addEventListener('click', () => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation()
+        e.preventDefault()
+        // Fly to the disaster location
+        if (map.current) {
+          map.current.flyTo({
+            center: [disaster.location.longitude, disaster.location.latitude],
+            zoom: 8,
+            duration: 1500,
+            essential: true,
+          })
+        }
         onDisasterClick?.(disaster)
       })
 
-      // Add hover effect
+      // Add hover effect - use filter/opacity instead of scale to prevent movement
       el.addEventListener('mouseenter', () => {
-        el.style.transform = 'scale(1.1)'
+        if (!isSelected) {
+          el.style.filter = 'brightness(1.2) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5))'
+          el.style.zIndex = '1000'
+        }
       })
       el.addEventListener('mouseleave', () => {
         if (!isSelected) {
-          el.style.transform = 'scale(1)'
+          el.style.filter = 'none'
+          el.style.zIndex = '1'
         }
       })
 
@@ -232,24 +326,81 @@ export function DisasterMap({
     preventionActions.forEach((action) => {
       if (!map.current) return
 
+      // Get action icon from PREVENTION_ACTIONS
+      const actionInfo = (window as any).__PREVENTION_ACTIONS?.[action.type]
+      const icon = actionInfo?.icon || '✓'
+      // Use green for all prevention actions
+      const color = '#10b981'
+
       const el = document.createElement('div')
       el.className = 'prevention-action-marker'
-      el.style.width = '32px'
-      el.style.height = '32px'
-      el.style.borderRadius = '50%'
-      el.style.backgroundColor = '#10b981'
-      el.style.border = '2px solid white'
-      el.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)'
-      el.style.cursor = 'pointer'
-      el.style.display = 'flex'
-      el.style.alignItems = 'center'
-      el.style.justifyContent = 'center'
-      el.style.fontSize = '18px'
+      el.style.cssText = `
+        position: relative;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: ${color};
+        border: 3px solid white;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        transition: all 0.2s ease;
+        z-index: 500;
+        animation: markerAppear 0.5s ease-out, markerPulse 2s ease-in-out 0.5s 3;
+      `
 
-      // Simple icon
-      el.textContent = '✓'
+      // Add icon
+      el.innerHTML = icon
 
-      const marker = new mapboxgl.Marker(el)
+      // Add CSS animation for marker appearance
+      if (!document.getElementById('marker-animations')) {
+        const style = document.createElement('style')
+        style.id = 'marker-animations'
+        style.textContent = `
+          @keyframes markerAppear {
+            0% {
+              transform: scale(0);
+              opacity: 0;
+            }
+            50% {
+              transform: scale(1.3);
+            }
+            100% {
+              transform: scale(1);
+              opacity: 1;
+            }
+          }
+          @keyframes markerPulse {
+            0%, 100% {
+              box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 0 rgba(16, 185, 129, 0.7);
+            }
+            50% {
+              box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 10px rgba(16, 185, 129, 0);
+            }
+          }
+        `
+        document.head.appendChild(style)
+      }
+
+      // Add hover effect
+      el.addEventListener('mouseenter', () => {
+        el.style.transform = 'scale(1.2)'
+        el.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.5)'
+        el.style.zIndex = '1000'
+      })
+      el.addEventListener('mouseleave', () => {
+        el.style.transform = 'scale(1)'
+        el.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)'
+        el.style.zIndex = '500'
+      })
+
+      const marker = new mapboxgl.Marker({
+        element: el,
+        anchor: 'center',
+      })
         .setLngLat([action.location.lng, action.location.lat])
         .addTo(map.current)
 
@@ -257,9 +408,24 @@ export function DisasterMap({
     })
   }, [preventionActions])
 
-  // Fit map to show all disasters
+  // Navigate to specific location when requested
+  useEffect(() => {
+    if (!map.current || !navigateToLocation) return
+
+    map.current.flyTo({
+      center: [navigateToLocation.lng, navigateToLocation.lat],
+      zoom: 10,
+      duration: 1500,
+      essential: true,
+    })
+  }, [navigateToLocation])
+
+  // Fit map to show all disasters (only on initial load)
   useEffect(() => {
     if (!map.current || disasters.length === 0) return
+
+    // Only fit bounds if no specific location is being navigated to
+    if (navigateToLocation) return
 
     const bounds = new mapboxgl.LngLatBounds()
 
@@ -273,7 +439,7 @@ export function DisasterMap({
       padding: 100,
       maxZoom: 10,
     })
-  }, [disasters])
+  }, [disasters, navigateToLocation])
 
   return (
     <div className="relative w-full h-full">

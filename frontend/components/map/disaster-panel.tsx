@@ -17,6 +17,7 @@ interface DisasterPanelProps {
   onContactAuthority?: (disaster: DisasterThreat) => void
   onActionDrop?: (actionType: PreventionActionType, location: { lat: number; lng: number }) => void
   actions?: PreventionAction[]
+  onNavigateToLocation?: (disaster: DisasterThreat) => void
 }
 
 export function DisasterPanel({
@@ -26,6 +27,7 @@ export function DisasterPanel({
   onContactAuthority,
   onActionDrop,
   actions: externalActions,
+  onNavigateToLocation,
 }: DisasterPanelProps) {
   const [internalActions, setInternalActions] = useState<PreventionAction[]>([])
   const [draggingAction, setDraggingAction] = useState<PreventionActionType | null>(null)
@@ -109,10 +111,26 @@ export function DisasterPanel({
             <CardTitle>Disaster Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex items-center gap-2 text-sm">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground">Location:</span>
-              <span>{disaster.location.name}</span>
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Location:</span>
+                <span>{disaster.location.name}</span>
+              </div>
+              {onNavigateToLocation && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onNavigateToLocation(disaster)}
+                  className="h-7 text-xs"
+                >
+                  <MapPin className="h-3 w-3 mr-1" />
+                  View on Map
+                </Button>
+              )}
+            </div>
+            <div className="text-xs text-muted-foreground pl-6">
+              {disaster.location.latitude.toFixed(4)}, {disaster.location.longitude.toFixed(4)}
             </div>
             <div className="flex items-center gap-2 text-sm">
               <AlertTriangle className="h-4 w-4 text-destructive" />
@@ -212,16 +230,36 @@ export function DisasterPanel({
           <Card>
             <CardHeader>
               <CardTitle>Active Actions ({actions.length})</CardTitle>
+              <CardDescription>Click on map to deploy actions</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
                 {actions.map((action, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between p-2 bg-muted rounded text-sm"
+                    className={cn(
+                      "flex items-center justify-between p-2 bg-muted rounded text-sm hover:bg-muted/80 transition-all",
+                      index === actions.length - 1 && "animate-pulse bg-green-500/20 border-2 border-green-500/50"
+                    )}
+                    style={{
+                      animation: index === actions.length - 1 ? 'highlightNew 1s ease-out' : undefined,
+                    }}
                   >
-                    <span>{PREVENTION_ACTIONS[action.type].icon} {PREVENTION_ACTIONS[action.type].name}</span>
-                    <span className="text-muted-foreground">${action.cost.toLocaleString()}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{PREVENTION_ACTIONS[action.type].icon}</span>
+                      <div>
+                        <div className="font-medium">{PREVENTION_ACTIONS[action.type].name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {action.location.latitude.toFixed(4)}, {action.location.longitude.toFixed(4)}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">${action.cost.toLocaleString()}</span>
+                      <span className="text-xs text-green-600 font-medium">
+                        {action.effectiveness}% effective
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
