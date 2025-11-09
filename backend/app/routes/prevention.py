@@ -8,9 +8,12 @@ from app.models.schemas import (
     PreventionAction,
     PreventionActionType,
 )
-from app.routes.disasters import MOCK_DISASTERS
+from app.services.firms_service import get_firms_service
 from datetime import datetime
 import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -26,10 +29,21 @@ async def calculate_prevention_plan(request: PreventionPlanRequest):
     - Optimizes action placement (placeholder for genetic algorithm)
     - Returns prevention plan with risk reduction
     """
-    # Find the threat
-    threat = next((d for d in MOCK_DISASTERS if d.id == request.threat_id), None)
-    
-    if not threat:
+    # Find the threat from FIRMS API
+    try:
+        firms_service = get_firms_service()
+        disasters = firms_service.fetch_wildfire_data(days=10)  # Fetch last 10 days to find the threat
+        threat = next((d for d in disasters if d.id == request.threat_id), None)
+        
+        if not threat:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Disaster threat with ID '{request.threat_id}' not found"
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching disaster {request.threat_id}: {e}")
         raise HTTPException(
             status_code=404,
             detail=f"Disaster threat with ID '{request.threat_id}' not found"
@@ -109,10 +123,21 @@ async def simulate_prevention(request: SimulationRequest):
     - Shows how prevention actions affect risk over time
     - Returns whether disaster was prevented
     """
-    # Find the threat
-    threat = next((d for d in MOCK_DISASTERS if d.id == request.threat_id), None)
-    
-    if not threat:
+    # Find the threat from FIRMS API
+    try:
+        firms_service = get_firms_service()
+        disasters = firms_service.fetch_wildfire_data(days=10)  # Fetch last 10 days to find the threat
+        threat = next((d for d in disasters if d.id == request.threat_id), None)
+        
+        if not threat:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Disaster threat with ID '{request.threat_id}' not found"
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching disaster {request.threat_id}: {e}")
         raise HTTPException(
             status_code=404,
             detail=f"Disaster threat with ID '{request.threat_id}' not found"
