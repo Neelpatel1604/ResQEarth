@@ -151,11 +151,6 @@ export default function Home() {
                 Check My Area
               </Button>
             </Link>
-            <Link href="/solutions">
-              <Button variant="ghost" size="sm">
-                My Solutions
-              </Button>
-            </Link>
             <UserMenu />
           </div>
         </div>

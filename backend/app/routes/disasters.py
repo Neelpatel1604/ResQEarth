@@ -308,19 +308,19 @@ async def get_total_disaster_count(
                 disasters = []
         else:
             # Count only wildfires from FIRMS API (with Ambee fallback)
-        firms_service = get_firms_service()
-        disasters = firms_service.fetch_wildfire_data(days=1)  # Last 24 hours
-        
-        # If FIRMS returns 0 elements, try Ambee fallback
-        if len(disasters) == 0:
-            logger.warning("FIRMS API returned 0 elements. Trying Ambee Fire API fallback.")
-            try:
-                ambee_service = get_ambee_service()
-                disasters = ambee_service.fetch_wildfire_data()
-                if len(disasters) > 0:
-                    logger.info(f"Successfully fetched {len(disasters)} disasters from Ambee Fire API (fallback)")
-            except Exception as ambee_error:
-                logger.error(f"Error fetching Ambee fallback data: {ambee_error}")
+            firms_service = get_firms_service()
+            disasters = firms_service.fetch_wildfire_data(days=1)  # Last 24 hours
+            
+            # If FIRMS returns 0 elements, try Ambee fallback
+            if len(disasters) == 0:
+                logger.warning("FIRMS API returned 0 elements. Trying Ambee Fire API fallback.")
+                try:
+                    ambee_service = get_ambee_service()
+                    disasters = ambee_service.fetch_wildfire_data()
+                    if len(disasters) > 0:
+                        logger.info(f"Successfully fetched {len(disasters)} disasters from Ambee Fire API (fallback)")
+                except Exception as ambee_error:
+                    logger.error(f"Error fetching Ambee fallback data: {ambee_error}")
         
         return {
             "total": len(disasters),
@@ -330,17 +330,18 @@ async def get_total_disaster_count(
         logger.error(f"Error fetching disaster count: {e}")
         # Try Ambee as last resort (for fire only)
         if not all_disasters:
-        try:
-            ambee_service = get_ambee_service()
-            disasters = ambee_service.fetch_wildfire_data()
-            return {
-                "total": len(disasters),
-                "timestamp": datetime.utcnow().isoformat(),
-            }
-        except Exception:
+            try:
+                ambee_service = get_ambee_service()
+                disasters = ambee_service.fetch_wildfire_data()
+                return {
+                    "total": len(disasters),
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
+            except Exception:
                 pass
-            return {
-                "total": 0,
-                "timestamp": datetime.utcnow().isoformat(),
-            }
+        
+        return {
+            "total": 0,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
 

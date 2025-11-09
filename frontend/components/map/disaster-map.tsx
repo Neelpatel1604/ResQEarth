@@ -119,10 +119,18 @@ export function DisasterMap({
   const markersRef = useRef<mapboxgl.Marker[]>([])
   const actionMarkersRef = useRef<mapboxgl.Marker[]>([])
   const popupRef = useRef<mapboxgl.Popup | null>(null)
+  const disastersRef = useRef(disasters)
+  const onDisasterClickRef = useRef(onDisasterClick)
   const sourceId = 'disasters-source'
   const clusterLayerId = 'disasters-cluster'
   const clusterCountLayerId = 'disasters-cluster-count'
   const unclusteredPointLayerId = 'disasters-unclustered-point'
+  
+  // Keep refs updated
+  useEffect(() => {
+    disastersRef.current = disasters
+    onDisasterClickRef.current = onDisasterClick
+  }, [disasters, onDisasterClick])
 
   useEffect(() => {
     if (!mapContainer.current || map.current) return
@@ -290,8 +298,110 @@ export function DisasterMap({
           })
         })
 
-        // Add click handler for unclustered points
-        // Note: We'll handle this in a separate effect to access current disasters
+        // Add click handler for unclustered points directly when layer is created
+        // Use refs to always access latest disasters and callback
+        const handleUnclusteredClick = (e: mapboxgl.MapMouseEvent) => {
+          if (!map.current) return
+          
+          console.log('🖱️ Direct click handler triggered!')
+          
+          // Close any open popup (hover tooltip) first
+          if (popupRef.current) {
+            popupRef.current.remove()
+            popupRef.current = null
+          }
+          
+          const features = map.current.queryRenderedFeatures(e.point, {
+            layers: [unclusteredPointLayerId],
+          })
+          
+          console.log('📍 Direct handler - Features found:', features.length)
+          
+          if (features[0]?.properties) {
+            const disasterId = features[0].properties.id as string
+            console.log('🔍 Direct handler - Disaster ID:', disasterId)
+            
+            // Use ref to get latest disasters
+            const currentDisasters = disastersRef.current
+            console.log('📊 Current disasters in ref:', currentDisasters.length, 'Looking for ID:', disasterId)
+            console.log('📋 Available disaster IDs:', currentDisasters.map(d => d.id))
+            
+            // Try to find disaster in current disasters array
+            let disaster = currentDisasters.find((d) => d.id === disasterId)
+            
+            // ALWAYS try to reconstruct from feature properties if not found
+            if (!disaster && features[0]) {
+              const props = features[0].properties
+              const geometry = features[0].geometry
+              console.log('⚠️ Disaster not in array, trying to reconstruct from feature')
+              console.log('📦 Feature properties:', props)
+              console.log('📍 Feature geometry:', geometry)
+              
+              // Get coordinates from properties first, then geometry as fallback
+              let featureLat: number | undefined = props?.lat as number
+              let featureLng: number | undefined = props?.lng as number
+              
+              // Fallback to geometry if not in properties
+              if ((!featureLat || !featureLng) && geometry?.type === 'Point' && geometry?.coordinates) {
+                featureLng = geometry.coordinates[0]
+                featureLat = geometry.coordinates[1]
+                console.log('📍 Using geometry coordinates:', featureLat, featureLng)
+              }
+              
+              // Try to find by matching coordinates in current disasters
+              if (featureLat && featureLng && currentDisasters.length > 0) {
+                disaster = currentDisasters.find((d) => 
+                  d.location &&
+                  Math.abs(d.location.latitude - featureLat!) < 0.001 && 
+                  Math.abs(d.location.longitude - featureLng!) < 0.001
+                )
+                if (disaster) {
+                  console.log('✅ Found disaster by coordinate match:', disaster.id)
+                }
+              }
+              
+              // If still not found, create disaster object from properties
+              if (!disaster && featureLat && featureLng) {
+                console.log('⚠️ Creating disaster from feature properties')
+                disaster = {
+                  id: disasterId,
+                  type: (props?.type as string) || 'wildfire',
+                  location: {
+                    latitude: featureLat,
+                    longitude: featureLng,
+                    name: (props?.name as string) || 'Unknown Location',
+                  },
+                  risk_percentage: (props?.risk as number) || 50,
+                  time_window_hours: 24,
+                  predicted_time: new Date().toISOString(),
+                  confidence: (props?.confidence as number) || 50,
+                } as any
+                console.log('✅ Created disaster object:', disaster)
+              }
+            }
+            
+            console.log('🔍 Direct handler - Final disaster:', disaster?.id, disaster?.type, disaster?.location?.name)
+            
+            if (disaster && onDisasterClickRef.current) {
+              console.log('📞 Direct handler - Calling onDisasterClick')
+              // Open the sidebar with disaster details
+              onDisasterClickRef.current(disaster)
+              
+              // Fly to location after a brief delay
+              setTimeout(() => {
+                if (map.current) {
+                  map.current.flyTo({
+                    center: [disaster.location.longitude, disaster.location.latitude],
+                    zoom: 10,
+                    duration: 1500,
+                  })
+                }
+              }, 100)
+            }
+          }
+        }
+        
+        map.current.on('click', unclusteredPointLayerId, handleUnclusteredClick)
 
         // Change cursor on hover
         map.current.on('mouseenter', clusterLayerId, () => {
@@ -457,6 +567,10 @@ export function DisasterMap({
             risk: disaster.risk_percentage,
             confidence: disaster.confidence || 0,
             selected: selectedDisasterId === disaster.id,
+            // Store location name for easier reconstruction
+            name: disaster.location?.name || 'Unknown Location',
+            lat: disaster.location?.latitude,
+            lng: disaster.location?.longitude,
           },
         }))
 
@@ -571,31 +685,86 @@ export function DisasterMap({
 
   // Handle clicks on unclustered points
   useEffect(() => {
-    if (!map.current || !map.current.isStyleLoaded()) return
+    if (!map.current) return
 
     const handleClick = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
       if (!map.current) return
+      
+      console.log('🖱️ Disaster marker clicked!')
+      
+      // Close any open popup (hover tooltip) first
+      if (popupRef.current) {
+        popupRef.current.remove()
+        popupRef.current = null
+      }
+      
       const features = map.current.queryRenderedFeatures(e.point, {
         layers: [unclusteredPointLayerId],
       })
+      console.log('📍 Features found:', features.length)
+      
       if (features[0]?.properties) {
         const disasterId = features[0].properties.id as string
+        console.log('📊 useEffect handler - Current disasters:', disasters.length, 'Looking for ID:', disasterId)
+        console.log('📋 useEffect handler - Available IDs:', disasters.map(d => d.id))
         const disaster = disasters.find((d) => d.id === disasterId)
+        console.log('🔍 Found disaster:', disaster?.id, disaster?.type, disaster?.location.name)
+        
         if (disaster) {
-          map.current.flyTo({
-            center: [disaster.location.longitude, disaster.location.latitude],
-            zoom: 10,
-            duration: 1500,
-          })
+          console.log('📞 Calling onDisasterClick with disaster:', disaster.id)
+          // Open the sidebar with disaster details
           onDisasterClick?.(disaster)
+          
+          // Fly to location after a brief delay to ensure sidebar opens first
+          setTimeout(() => {
+            if (map.current) {
+              map.current.flyTo({
+                center: [disaster.location.longitude, disaster.location.latitude],
+                zoom: 10,
+                duration: 1500,
+              })
+            }
+          }, 100)
         }
+      } else {
+        console.log('❌ No features found at click point')
       }
     }
 
-    map.current.on('click', unclusteredPointLayerId, handleClick)
+    // Add general map click handler to debug
+    const generalClickHandler = (e: mapboxgl.MapMouseEvent) => {
+      console.log('🗺️ Map clicked at:', e.lngLat)
+      const features = map.current?.queryRenderedFeatures(e.point)
+      console.log('🎯 All features at click point:', features?.length, features?.map(f => f.layer?.id))
+    }
+    
+    // Wait for the layer to be available before attaching handlers
+    const attachClickHandlers = () => {
+      if (!map.current) return
+      
+      // Check if layer exists
+      const layer = map.current.getLayer(unclusteredPointLayerId)
+      if (!layer) {
+        console.log('⏳ Layer not ready yet, waiting...')
+        setTimeout(attachClickHandlers, 100)
+        return
+      }
+      
+      console.log('✅ Attaching click handlers to layer:', unclusteredPointLayerId)
+      map.current.on('click', generalClickHandler)
+      map.current.on('click', unclusteredPointLayerId, handleClick)
+    }
+
+    // Attach handlers when map is ready
+    if (map.current.isStyleLoaded()) {
+      attachClickHandlers()
+    } else {
+      map.current.once('styledata', attachClickHandlers)
+    }
 
     return () => {
       if (map.current) {
+        map.current.off('click', generalClickHandler)
         map.current.off('click', unclusteredPointLayerId, handleClick)
       }
     }
@@ -1068,4 +1237,5 @@ export function DisasterMap({
     </div>
   )
 }
+
 

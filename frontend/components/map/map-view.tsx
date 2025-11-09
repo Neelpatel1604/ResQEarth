@@ -118,12 +118,15 @@ export function MapView({ onSaveSolution, onContactAuthority, onToggleChange }: 
   }, [showAllDisasters])
 
   const handleDisasterClick = useCallback((disaster: DisasterThreat) => {
+    console.log('✅ handleDisasterClick called with:', disaster.id, disaster.type, disaster.location.name)
     // If clicking a different disaster, clear previous actions
     if (selectedDisaster?.id !== disaster.id) {
       setPreventionActions([])
       setPanelActions([])
     }
+    console.log('🎯 Setting selectedDisaster to:', disaster.id)
     setSelectedDisaster(disaster)
+    console.log('📱 Sidebar should now open!')
   }, [selectedDisaster])
 
   const handleNavigateToLocation = useCallback((disaster: DisasterThreat) => {
@@ -382,6 +385,7 @@ export function MapView({ onSaveSolution, onContactAuthority, onToggleChange }: 
       )}
       {selectedDisaster && (
         <>
+          {console.log('🎨 Rendering DisasterPanel for:', selectedDisaster.id)}
           <DisasterPanel
             disaster={selectedDisaster}
             onClose={handleClosePanel}
