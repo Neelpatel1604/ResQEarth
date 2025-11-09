@@ -52,6 +52,61 @@ class EmailService:
         
         return subscribers
     
+    def save_subscribers_csv(self, csv_content: bytes) -> Dict[str, Any]:
+        """
+        Save uploaded CSV content to subscribers.csv file.
+        
+        Args:
+            csv_content: Bytes content of the CSV file
+            
+        Returns:
+            Dictionary with success status and subscriber count
+        """
+        csv_path = "subscribers.csv"
+        full_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), csv_path)
+        
+        try:
+            # Decode bytes to string
+            csv_text = csv_content.decode('utf-8')
+            
+            # Validate CSV format by trying to parse it
+            reader = csv.DictReader(csv_text.splitlines())
+            required_columns = {'email', 'name', 'location', 'disaster_types'}
+            
+            # Check if all required columns are present
+            if not required_columns.issubset(set(reader.fieldnames or [])):
+                return {
+                    "success": False,
+                    "error": f"CSV must contain columns: {', '.join(required_columns)}"
+                }
+            
+            # Count subscribers
+            subscribers = []
+            for row in reader:
+                if row.get('email', '').strip():  # Only count rows with email
+                    subscribers.append(row)
+            
+            # Save the CSV file
+            with open(full_path, 'w', encoding='utf-8', newline='') as file:
+                file.write(csv_text)
+            
+            return {
+                "success": True,
+                "count": len(subscribers),
+                "message": f"Successfully uploaded {len(subscribers)} subscribers"
+            }
+            
+        except UnicodeDecodeError:
+            return {
+                "success": False,
+                "error": "Invalid file encoding. Please use UTF-8 encoding."
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Error processing CSV: {str(e)}"
+            }
+    
     def filter_subscribers(
         self,
         subscribers: List[Dict[str, Any]],

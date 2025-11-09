@@ -1,5 +1,5 @@
 """API routes for disaster alerts and email notifications."""
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, UploadFile, File
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, EmailStr
 from app.services.email_service import email_service
@@ -125,3 +125,31 @@ async def send_test_alert(email: Optional[str] = None):
         raise HTTPException(status_code=500, detail=result.get('error', 'Failed to send test alert'))
     
     return result
+
+
+@router.post("/subscribers/upload-csv")
+async def upload_subscribers_csv(file: UploadFile = File(...)):
+    """
+    Upload a CSV file with subscriber data.
+    
+    Expected CSV format:
+    email,name,location,disaster_types
+    user@example.com,John Doe,California,"flood,wildfire"
+    
+    Returns:
+        Success status and count of subscribers loaded
+    """
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="File must be a CSV file")
+    
+    try:
+        # Read file content
+        contents = await file.read()
+        result = email_service.save_subscribers_csv(contents)
+        
+        if not result.get('success'):
+            raise HTTPException(status_code=400, detail=result.get('error', 'Failed to process CSV'))
+        
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing CSV: {str(e)}")
