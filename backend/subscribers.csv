@@ -1,4 +1,0 @@
-email,name,location,disaster_types
-user1@example.com,John Doe,California,"flood,wildfire,earthquake"
-user2@example.com,Jane Smith,Texas,"flood,hurricane"
-user3@example.com,Bob Johnson,Florida,"hurricane,flood"
