@@ -3,12 +3,17 @@
  */
 
 import { apiClient } from './client'
-import { DisasterThreat, DisasterListResponse } from '@/lib/map/dummy-data'
+import { DisasterThreat } from '@/lib/map/dummy-data'
 
 export interface DisasterListParams {
   disaster_type?: string
   min_risk?: number
   limit?: number
+}
+
+export interface DisasterListResponse {
+  disasters: DisasterThreat[]
+  total: number
 }
 
 export async function getDisasters(params?: DisasterListParams): Promise<DisasterListResponse> {
