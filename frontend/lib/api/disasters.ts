@@ -23,7 +23,7 @@ export async function getDisasters(params?: DisasterListParams): Promise<Disaste
   if (params?.limit !== undefined) queryParams.append('limit', params.limit.toString())
 
   const queryString = queryParams.toString()
-  const endpoint = `/disasters${queryString ? `?${queryString}` : ''}`
+  const endpoint = `/api/disasters${queryString ? `?${queryString}` : ''}`
 
   try {
     return await apiClient.get<DisasterListResponse>(endpoint)
@@ -35,7 +35,7 @@ export async function getDisasters(params?: DisasterListParams): Promise<Disaste
 
 export async function getDisasterById(id: string): Promise<DisasterThreat> {
   try {
-    return await apiClient.get<DisasterThreat>(`/disasters/${id}`)
+    return await apiClient.get<DisasterThreat>(`/api/disasters/${id}`)
   } catch (error) {
     console.error(`Failed to fetch disaster ${id}:`, error)
     throw error

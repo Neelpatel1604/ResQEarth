@@ -32,6 +32,7 @@ interface DisasterMapProps {
   }>
   onActionDrop?: (actionType: string, location: { lat: number; lng: number }) => void
   navigateToLocation?: { lat: number; lng: number } | null
+  userLocation?: { lat: number; lng: number } | null
 }
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ''
@@ -113,11 +114,13 @@ export function DisasterMap({
   preventionActions = [],
   onActionDrop,
   navigateToLocation,
+  userLocation,
 }: DisasterMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const map = useRef<mapboxgl.Map | null>(null)
   const markersRef = useRef<mapboxgl.Marker[]>([])
   const actionMarkersRef = useRef<mapboxgl.Marker[]>([])
+  const userLocationMarkerRef = useRef<mapboxgl.Marker | null>(null)
   const popupRef = useRef<mapboxgl.Popup | null>(null)
   const disastersRef = useRef(disasters)
   const onDisasterClickRef = useRef(onDisasterClick)
@@ -1185,9 +1188,9 @@ export function DisasterMap({
     })
   }, [preventionActions])
 
-  // Navigate to specific location when requested
+  // Navigate to specific location when requested (but don't override user location)
   useEffect(() => {
-    if (!map.current || !navigateToLocation) return
+    if (!map.current || !navigateToLocation || userLocation) return
 
     map.current.flyTo({
       center: [navigateToLocation.lng, navigateToLocation.lat],
@@ -1195,7 +1198,166 @@ export function DisasterMap({
       duration: 1500,
       essential: true,
     })
-  }, [navigateToLocation])
+  }, [navigateToLocation, userLocation])
+
+  // Add user location marker
+  useEffect(() => {
+    if (!map.current || !userLocation) {
+      console.log('User location marker: map or location not ready', { 
+        hasMap: !!map.current, 
+        hasLocation: !!userLocation 
+      })
+      return
+    }
+
+    console.log('Adding user location marker at:', userLocation)
+
+    // Remove existing user location marker
+    if (userLocationMarkerRef.current) {
+      console.log('Removing existing user location marker')
+      userLocationMarkerRef.current.remove()
+      userLocationMarkerRef.current = null
+    }
+
+    // Wait for map to be fully loaded if needed
+    if (!map.current.isStyleLoaded()) {
+      console.log('Map style not loaded yet, waiting...')
+      const onLoad = () => {
+        addUserLocationMarker()
+        map.current?.off('style.load', onLoad)
+      }
+      map.current.on('style.load', onLoad)
+      return
+    }
+
+    addUserLocationMarker()
+
+    function addUserLocationMarker() {
+      if (!map.current || !userLocation) return
+
+      // Create a custom HTML element for the user location pin (RED PIN)
+      const el = document.createElement('div')
+      el.className = 'user-location-marker'
+      el.style.width = '40px'
+      el.style.height = '40px'
+      el.style.cursor = 'pointer'
+      el.style.zIndex = '10000'
+      el.style.position = 'relative'
+      
+      // Create red pin shape (teardrop/pin shape)
+      const pinSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+      pinSvg.setAttribute('width', '40')
+      pinSvg.setAttribute('height', '40')
+      pinSvg.setAttribute('viewBox', '0 0 40 40')
+      pinSvg.style.position = 'absolute'
+      pinSvg.style.top = '0'
+      pinSvg.style.left = '0'
+      
+      // Red pin body (teardrop shape)
+      const pinPath = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+      pinPath.setAttribute('d', 'M20 2C12.27 2 6 8.27 6 16c0 10 14 22 14 22s14-12 14-22C34 8.27 27.73 2 20 2z')
+      pinPath.setAttribute('fill', '#ef4444')
+      pinPath.setAttribute('stroke', '#ffffff')
+      pinPath.setAttribute('stroke-width', '2')
+      pinSvg.appendChild(pinPath)
+      
+      // White center dot
+      const centerDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+      centerDot.setAttribute('cx', '20')
+      centerDot.setAttribute('cy', '16')
+      centerDot.setAttribute('r', '6')
+      centerDot.setAttribute('fill', '#ffffff')
+      pinSvg.appendChild(centerDot)
+      
+      el.appendChild(pinSvg)
+      
+      // Add pulsing animation ring
+      const pulseRing = document.createElement('div')
+      pulseRing.style.width = '40px'
+      pulseRing.style.height = '40px'
+      pulseRing.style.borderRadius = '50%'
+      pulseRing.style.border = '3px solid #ef4444'
+      pulseRing.style.position = 'absolute'
+      pulseRing.style.top = '0'
+      pulseRing.style.left = '0'
+      pulseRing.style.animation = 'pulse-ring 2s infinite'
+      pulseRing.style.opacity = '0.6'
+      el.appendChild(pulseRing)
+      
+      // Add CSS animations if not already added
+      if (!document.getElementById('user-location-animation')) {
+        const style = document.createElement('style')
+        style.id = 'user-location-animation'
+        style.textContent = `
+          @keyframes pulse {
+            0%, 100% {
+              transform: scale(1);
+              opacity: 1;
+            }
+            50% {
+              transform: scale(1.1);
+              opacity: 0.9;
+            }
+          }
+          @keyframes pulse-ring {
+            0% {
+              transform: scale(1);
+              opacity: 0.6;
+            }
+            100% {
+              transform: scale(2);
+              opacity: 0;
+            }
+          }
+        `
+        document.head.appendChild(style)
+      }
+      
+      // Add pulsing animation to the pin
+      pinSvg.style.animation = 'pulse 2s infinite'
+
+      try {
+        // Create marker
+        const marker = new mapboxgl.Marker({
+          element: el,
+          anchor: 'center',
+        })
+          .setLngLat([userLocation.lng, userLocation.lat])
+          .setPopup(
+            new mapboxgl.Popup({ offset: 25, closeOnClick: false })
+              .setHTML('<div style="padding: 8px;"><strong>Your Location</strong><br/>' +
+                `${userLocation.lat.toFixed(6)}, ${userLocation.lng.toFixed(6)}</div>`)
+          )
+          .addTo(map.current)
+
+        userLocationMarkerRef.current = marker
+        console.log('User location marker added successfully at:', [userLocation.lng, userLocation.lat])
+
+        // Center map on user location with a slight delay to ensure marker is visible
+        setTimeout(() => {
+          if (map.current) {
+            map.current.flyTo({
+              center: [userLocation.lng, userLocation.lat],
+              zoom: 14,
+              duration: 1500,
+              essential: true,
+            })
+          }
+        }, 100)
+      } catch (error) {
+        console.error('Error adding user location marker:', error)
+      }
+    }
+
+    // Cleanup function
+    return () => {
+      if (userLocationMarkerRef.current) {
+        console.log('Cleaning up user location marker')
+        userLocationMarkerRef.current.remove()
+        userLocationMarkerRef.current = null
+      }
+    }
+  }, [userLocation])
 
   // Fit map to show all disasters (only on initial load)
   useEffect(() => {

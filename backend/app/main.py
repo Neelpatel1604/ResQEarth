@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.config import settings
-from app.routes import health, disasters, prevention, alerts
+from app.routes import health, disasters, prevention, alerts, chat, reports
 from app.scheduler import disaster_scheduler
 
 @asynccontextmanager
@@ -14,7 +14,6 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown: Stop the scheduler
     disaster_scheduler.stop()
-
 
 # Create FastAPI app
 app = FastAPI(
@@ -41,6 +40,8 @@ app.include_router(health.router, prefix=settings.API_V1_PREFIX, tags=["health"]
 app.include_router(disasters.router, prefix=settings.API_V1_PREFIX, tags=["disasters"])
 app.include_router(prevention.router, prefix=settings.API_V1_PREFIX, tags=["prevention"])
 app.include_router(alerts.router, prefix=settings.API_V1_PREFIX, tags=["alerts"])
+app.include_router(chat.router, prefix=settings.API_V1_PREFIX, tags=["chat"])
+app.include_router(reports.router, prefix=settings.API_V1_PREFIX, tags=["reports"])
 
 
 @app.get("/")

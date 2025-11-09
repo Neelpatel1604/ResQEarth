@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     MAPBOX_API_KEY: Optional[str] = None
     FIRMS_MAP_KEY: Optional[str] = None
     AMBEE_API_KEY: Optional[str] = None
+    OPENAI_API_KEY: Optional[str] = None
     
     # Natural Disasters API Configuration
     USE_NATURAL_DISASTERS_API: bool = False  # Default to False to keep old behavior
