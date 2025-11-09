@@ -1,7 +1,5 @@
 'use client'
 
-import { Footer } from "@/components/Footer";
-import { Header } from "@/components/Header";
 import Particles from "@/components/Particles";
 import { Card, CardHeader, CardDescription, CardContent, CardTitle } from "@/components/ui/card";
 import { Users } from "lucide-react";
@@ -23,10 +21,8 @@ export default function Page() {
                 />
             </div>
             {/* Content wrapper */}
-            <div className="relative z-10 min-h-screen flex flex-col">
-                {/* Navigation Header */}
-                <Header />
-                <main className="flex-1 mt-20 mb-10">
+            <div className="relative z-10">
+                <main className="mb-10">
                     <section className="container mx-auto px-4 py-16 flex flex-col items-center">
                         <div className="max-w-2xl w-full text-center space-y-6">
                             <h1 className="text-4xl font-bold mb-2">About ResQ Earth</h1>
@@ -93,7 +89,6 @@ export default function Page() {
                         </div>
                     </section>
                 </main>
-                <Footer />
             </div>
         </div>
     );

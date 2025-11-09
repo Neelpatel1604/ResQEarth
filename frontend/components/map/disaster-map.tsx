@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
-import { DisasterThreat } from '@/lib/map/dummy-data'
+import { DisasterThreat } from '@/lib/map/data'
 import { 
   AlertTriangle, 
   Flame, 

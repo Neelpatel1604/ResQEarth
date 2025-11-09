@@ -1,7 +1,7 @@
 // components/layout/Footer.tsx
 'use client'
 
-import { Satellite, Twitter, Github, Linkedin, Mail } from "lucide-react"
+import { Satellite } from "lucide-react"
 
 export function Footer() {
   const year = new Date().getFullYear()
@@ -9,7 +9,7 @@ export function Footer() {
   return (
     <footer className="border-t bg-background mt-auto">
       <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
 
           {/* Brand */}
           <div className="space-y-3">
@@ -26,10 +26,9 @@ export function Footer() {
           <div>
             <h4 className="font-semibold mb-3">Platform</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><a href="/map" className="hover:text-primary transition-colors">Global Map</a></li>
+              <li><a href="/" className="hover:text-primary transition-colors">Home</a></li>
               <li><a href="/alerts" className="hover:text-primary transition-colors">Disaster Alerts</a></li>
-              <li><a href="/analytics" className="hover:text-primary transition-colors">Analytics</a></li>
-              <li><a href="/teams" className="hover:text-primary transition-colors">Response Teams</a></li>
+              <li><a href="/knowledge-base" className="hover:text-primary transition-colors">Knowledge Base</a></li>
             </ul>
           </div>
 
@@ -38,21 +37,8 @@ export function Footer() {
             <h4 className="font-semibold mb-3">Company</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><a href="/about" className="hover:text-primary transition-colors">About Us</a></li>
-              <li><a href="/careers" className="hover:text-primary transition-colors">Careers</a></li>
-              <li><a href="/contact" className="hover:text-primary transition-colors">Contact</a></li>
-              <li><a href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</a></li>
+              <li><a href="/check-my-area" className="hover:text-primary transition-colors">Check My Area</a></li>
             </ul>
-          </div>
-
-          {/* Social */}
-          <div>
-            <h4 className="font-semibold mb-3">Follow Us</h4>
-            <div className="flex space-x-3">
-              <SocialLink href="#" icon={Twitter} />
-              <SocialLink href="#" icon={Github} />
-              <SocialLink href="#" icon={Linkedin} />
-              <SocialLink href="#" icon={Mail} />
-            </div>
           </div>
         </div>
 
@@ -62,18 +48,5 @@ export function Footer() {
         </div>
       </div>
     </footer>
-  )
-}
-
-/* Helper for social icons */
-function SocialLink({ href, icon: Icon }: { href: string; icon: any }) {
-  return (
-    <a
-      href={href}
-      className="text-muted-foreground hover:text-primary transition-colors"
-      aria-label={Icon.displayName ?? "social"}
-    >
-      <Icon className="h-5 w-5" />
-    </a>
   )
 }

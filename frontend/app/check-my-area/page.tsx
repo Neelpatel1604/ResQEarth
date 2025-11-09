@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { DisasterMap } from '@/components/map/disaster-map'
 import { DisasterPanel } from '@/components/map/disaster-panel'
-import { DisasterThreat, PreventionAction, PreventionActionType, PREVENTION_ACTIONS, DUMMY_DISASTERS } from '@/lib/map/dummy-data'
+import { DisasterThreat, PreventionAction, PreventionActionType, PREVENTION_ACTIONS, DUMMY_DISASTERS } from '@/lib/map/data'
 import { checkMyArea, getAllDisasters, getDisasters } from '@/lib/api/disasters'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

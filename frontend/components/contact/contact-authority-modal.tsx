@@ -18,7 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Phone, Mail, MapPin, Send, Loader2 } from 'lucide-react'
-import { DisasterThreat } from '@/lib/map/dummy-data'
+import { DisasterThreat } from '@/lib/map/data'
 import { findNearestAuthorities, getAuthorityTypeLabel, Authority } from '@/lib/services/authority-service'
 import { cn } from '@/lib/utils'
 

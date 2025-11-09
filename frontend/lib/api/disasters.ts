@@ -3,7 +3,7 @@
  */
 
 import { apiClient } from './client'
-import { DisasterThreat } from '@/lib/map/dummy-data'
+import { DisasterThreat } from '@/lib/map/data'
 
 export interface DisasterListParams {
   disaster_type?: string
