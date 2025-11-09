@@ -56,6 +56,11 @@ class Settings(BaseSettings):
     NASA_API_KEY: Optional[str] = None
     MAPBOX_API_KEY: Optional[str] = None
     FIRMS_MAP_KEY: Optional[str] = None
+    AMBEE_API_KEY: Optional[str] = None
+    
+    # Natural Disasters API Configuration
+    USE_NATURAL_DISASTERS_API: bool = False  # Default to False to keep old behavior
+    NATURAL_DISASTERS_CACHE_TTL: int = 600  # 10 minutes in seconds
     
     # Server Configuration
     HOST: str = "0.0.0.0"

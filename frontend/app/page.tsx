@@ -1,19 +1,17 @@
 'use client'
 
+import { useState } from 'react'
 import { useAuth } from "@/hooks/useAuth"
 import { AuthForm } from "@/components/auth/auth-form"
-import { UserMenu } from "@/components/auth/user-menu"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Satellite, AlertTriangle, Users, MapPin } from "lucide-react"
+import { Satellite } from "lucide-react"
 import { MapView } from "@/components/map/map-view"
-import { DisasterCounter } from "@/components/map/disaster-counter"
-import Link from "next/link"
 import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
 
 export default function Home() {
   const { user, loading } = useAuth()
+  const [showAllDisasters, setShowAllDisasters] = useState(false)
 
   // Check if Supabase is configured
   const hasSupabase = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -88,11 +86,11 @@ export default function Home() {
       <Header />
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col">
-
+      <main className="flex-1 flex flex-col pt-16">
         {/* Map View */}
         <div className="flex-1 relative">
           <MapView
+            onToggleChange={setShowAllDisasters}
             onSaveSolution={async (disaster, actions) => {
               try {
                 const { saveSolution, createSolutionFromData } = await import('@/lib/supabase/solutions')
@@ -116,9 +114,9 @@ export default function Home() {
               // TODO: Implement proper contact authority flow
             }}
             />
-            <Footer />
         </div>
       </main>
+      <Footer />
     </div>
   )
 }

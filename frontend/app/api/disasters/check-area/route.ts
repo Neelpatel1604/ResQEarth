@@ -8,8 +8,19 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const queryString = searchParams.toString()
     
+    // Validate required parameters
+    const lat = searchParams.get('lat')
+    const lng = searchParams.get('lng')
+    
+    if (!lat || !lng) {
+      return NextResponse.json(
+        { error: 'Latitude (lat) and longitude (lng) are required' },
+        { status: 400 }
+      )
+    }
+    
     // Build the backend URL
-    const backendUrl = `${BACKEND_URL}/api/disasters${queryString ? `?${queryString}` : ''}`
+    const backendUrl = `${BACKEND_URL}/api/disasters/check-area?${queryString}`
     
     // Forward the request to the backend
     const response = await fetch(backendUrl, {
@@ -26,19 +37,8 @@ export async function GET(request: NextRequest) {
         detail: `Backend error: ${response.status}`,
       }))
       
-      // If it's a 500 error, it might be that FIRMS returned empty and fallback is happening
-      // Return empty disasters array instead of error
-      if (response.status === 500 && errorData.detail?.includes('FIRMS')) {
-        console.log('Backend returned 500, but might be processing fallback')
-        return NextResponse.json({
-          disasters: [],
-          total: 0,
-          timestamp: new Date().toISOString(),
-        })
-      }
-      
       return NextResponse.json(
-        { error: errorData.detail || 'Failed to fetch disasters' },
+        { error: errorData.detail || 'Failed to check area' },
         { status: response.status }
       )
     }

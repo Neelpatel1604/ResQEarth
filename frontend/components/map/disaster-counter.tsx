@@ -7,9 +7,10 @@ import { apiClient } from '@/lib/api/client'
 
 interface DisasterCounterProps {
   className?: string
+  showAllDisasters?: boolean
 }
 
-export function DisasterCounter({ className }: DisasterCounterProps) {
+export function DisasterCounter({ className, showAllDisasters = false }: DisasterCounterProps) {
   const [count, setCount] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const backendAvailableRef = useRef(false)
@@ -17,9 +18,8 @@ export function DisasterCounter({ className }: DisasterCounterProps) {
   useEffect(() => {
     const fetchCount = async () => {
       try {
-        const response = await apiClient.get<{ total: number; timestamp: string }>(
-          '/disasters/count/total'
-        )
+        const endpoint = `/api/disasters/count/total${showAllDisasters ? '?all_disasters=true' : ''}`
+        const response = await apiClient.get<{ total: number; timestamp: string }>(endpoint)
         setCount(response.total)
         backendAvailableRef.current = true
       } catch (error) {
@@ -50,7 +50,7 @@ export function DisasterCounter({ className }: DisasterCounterProps) {
     }, 30000)
 
     return () => clearInterval(interval)
-  }, [])
+  }, [showAllDisasters])
 
   if (loading) {
     return (

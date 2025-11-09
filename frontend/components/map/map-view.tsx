@@ -4,18 +4,25 @@ import { useState, useCallback, useEffect } from 'react'
 import { DisasterMap } from './disaster-map'
 import { DisasterPanel } from './disaster-panel'
 import { ContactAuthorityModal } from '@/components/contact/contact-authority-modal'
-import { DisasterThreat, PreventionAction, PreventionActionType, PREVENTION_ACTIONS } from '@/lib/map/dummy-data'
-import { DUMMY_DISASTERS } from '@/lib/map/dummy-data'
+import { DisasterThreat, PreventionAction, PreventionActionType, PREVENTION_ACTIONS, DUMMY_DISASTERS } from '@/lib/map/dummy-data'
 import { Authority } from '@/lib/services/authority-service'
+import { getDisasters, getAllDisasters } from '@/lib/api/disasters'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
+import { Flame, AlertTriangle } from 'lucide-react'
 
 interface MapViewProps {
   onSaveSolution?: (disaster: DisasterThreat, actions: PreventionAction[]) => void
   onContactAuthority?: (disaster: DisasterThreat) => void
+  onToggleChange?: (showAllDisasters: boolean) => void
 }
 
-export function MapView({ onSaveSolution, onContactAuthority }: MapViewProps) {
-  const [disasters] = useState<DisasterThreat[]>(DUMMY_DISASTERS)
+export function MapView({ onSaveSolution, onContactAuthority, onToggleChange }: MapViewProps) {
+  const [disasters, setDisasters] = useState<DisasterThreat[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [selectedDisaster, setSelectedDisaster] = useState<DisasterThreat | null>(null)
+  const [showAllDisasters, setShowAllDisasters] = useState(false) // Toggle: false = fire only, true = all disasters
   const [preventionActions, setPreventionActions] = useState<
     Array<{ id: string; type: string; location: { lat: number; lng: number } }>
   >([])
@@ -40,13 +47,85 @@ export function MapView({ onSaveSolution, onContactAuthority }: MapViewProps) {
     }
   }, [])
 
+  // Fetch disasters from API with auto-refresh
+  useEffect(() => {
+    const fetchDisasters = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        
+        let response
+        if (showAllDisasters) {
+          // Use new endpoint for all disasters
+          response = await getAllDisasters({
+            limit: 50, // Ambee API max limit is 50
+          })
+          console.log(`Received ${response.disasters.length} disasters from All Disasters API`)
+        } else {
+          // Use existing endpoint for fire only
+          response = await getDisasters({
+            disaster_type: 'wildfire',
+            limit: 50,
+          })
+          console.log(`Received ${response.disasters.length} disasters from Fire API`)
+        }
+        
+        // Empty array is valid - means no disasters found
+        if (response.disasters.length === 0) {
+          console.log('No disasters found.')
+          setDisasters([])
+          // Don't show error for empty results - this is valid
+        } else {
+          const sample = response.disasters[0]
+          console.log('Sample disaster:', {
+            id: sample.id,
+            type: sample.type,
+            lat: sample.location?.latitude,
+            lng: sample.location?.longitude,
+            risk: sample.risk_percentage,
+          })
+          setDisasters(response.disasters)
+        }
+      } catch (err) {
+        console.error('Failed to fetch disasters:', err)
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load disaster data'
+        
+        // Use dummy data as fallback for testing
+        if (errorMessage.includes('Failed to connect') || errorMessage.includes('backend') || errorMessage.includes('fetch')) {
+          console.log('Backend not available, using dummy data for testing')
+          // Filter dummy data based on toggle state
+          const filteredDummyData = showAllDisasters 
+            ? DUMMY_DISASTERS 
+            : DUMMY_DISASTERS.filter(d => d.type === 'wildfire')
+          setDisasters(filteredDummyData)
+          setError(null) // Don't show error when using dummy data
+        } else {
+          setError(null) // Don't show error for empty results
+          setDisasters([])
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    // Initial fetch
+    fetchDisasters()
+
+    // Auto-refresh every 10 minutes (600000 ms)
+    const interval = setInterval(fetchDisasters, 10 * 60 * 1000)
+
+    return () => clearInterval(interval)
+  }, [showAllDisasters])
   const handleDisasterClick = useCallback((disaster: DisasterThreat) => {
+    console.log('✅ handleDisasterClick called with:', disaster.id, disaster.type, disaster.location.name)
     // If clicking a different disaster, clear previous actions
     if (selectedDisaster?.id !== disaster.id) {
       setPreventionActions([])
       setPanelActions([])
     }
+    console.log('🎯 Setting selectedDisaster to:', disaster.id)
     setSelectedDisaster(disaster)
+    console.log('📱 Sidebar should now open!')
   }, [selectedDisaster])
 
   const handleNavigateToLocation = useCallback((disaster: DisasterThreat) => {
@@ -154,6 +233,111 @@ export function MapView({ onSaveSolution, onContactAuthority }: MapViewProps) {
 
   return (
     <div className="relative w-full h-screen">
+      {/* Toggle between All Disasters and Fire Only */}
+      <div className="absolute top-4 right-4 z-50 bg-background/90 backdrop-blur-sm rounded-lg border shadow-lg p-3 min-w-[280px]">
+        <div className="flex items-center gap-3">
+          <div 
+            className={`flex items-center gap-2 transition-colors ${
+              !showAllDisasters 
+                ? 'text-foreground font-semibold' 
+                : 'text-muted-foreground'
+            }`}
+            onClick={() => {
+              setShowAllDisasters(false)
+              onToggleChange?.(false)
+            }}
+          >
+            <Flame className={`h-4 w-4 ${!showAllDisasters ? 'text-orange-500' : 'text-muted-foreground'}`} />
+            <Label htmlFor="disaster-toggle" className="text-sm cursor-pointer">
+              Fire Only
+            </Label>
+          </div>
+          <Switch
+            id="disaster-toggle"
+            checked={showAllDisasters}
+            onCheckedChange={(checked) => {
+              setShowAllDisasters(checked)
+              onToggleChange?.(checked)
+            }}
+          />
+          <div 
+            className={`flex items-center gap-2 transition-colors ${
+              showAllDisasters 
+                ? 'text-foreground font-semibold' 
+                : 'text-muted-foreground'
+            }`}
+            onClick={() => {
+              setShowAllDisasters(true)
+              onToggleChange?.(true)
+            }}
+          >
+            <AlertTriangle className={`h-4 w-4 ${showAllDisasters ? 'text-primary' : 'text-muted-foreground'}`} />
+            <Label htmlFor="disaster-toggle" className="text-sm cursor-pointer">
+              All Disasters
+            </Label>
+          </div>
+        </div>
+        {/* Dynamic description based on toggle state */}
+        <div className="mt-2 pt-2 border-t text-xs text-muted-foreground">
+          {showAllDisasters ? (
+            <span>Showing all disaster types: earthquakes, floods, cyclones, volcanoes, and more</span>
+          ) : (
+            <span>Showing only wildfire data from NASA FIRMS and Ambee Fire API</span>
+          )}
+        </div>
+      </div>
+
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-50">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">
+              {showAllDisasters ? 'Loading all disasters...' : 'Loading wildfire data...'}
+            </p>
+          </div>
+        </div>
+      )}
+      {error && !loading && (
+        <div className="absolute top-4 right-4 bg-yellow-500/90 text-white px-4 py-2 rounded-lg shadow-lg z-50 max-w-md">
+          <p className="text-sm">{error}</p>
+        </div>
+      )}
+      {!loading && disasters.length > 0 && (
+        <div className="absolute top-4 left-4 bg-black/80 text-white px-4 py-2 rounded-lg shadow-lg z-50">
+          <div className="text-sm font-semibold">
+            {showAllDisasters ? (
+              <>🌍 {disasters.length.toLocaleString()} Active Disasters</>
+            ) : (
+              <>🔥 {disasters.length.toLocaleString()} Active Wildfires (Last 24 Hours)</>
+            )}
+          </div>
+          <div className="text-xs text-gray-300 mt-1">
+            {showAllDisasters ? (
+              <>Data from Ambee Natural Disasters API • Cached for 10 min • Auto-refreshes every 10 min</>
+            ) : (
+              <>Data from NASA FIRMS (with Ambee fallback) • Auto-refreshes every 10 min</>
+            )}
+          </div>
+        </div>
+      )}
+      {!loading && disasters.length === 0 && !error && (
+        <div className="absolute top-4 left-4 bg-blue-500/90 text-white px-4 py-2 rounded-lg shadow-lg z-50">
+          <div className="text-sm font-semibold">
+            {showAllDisasters ? (
+              <>ℹ️ No active disasters detected</>
+            ) : (
+              <>ℹ️ No active wildfires detected</>
+            )}
+          </div>
+          <div className="text-xs text-blue-100 mt-1">
+            {showAllDisasters ? (
+              <>Checking Ambee Natural Disasters API • Auto-refreshes every 10 min</>
+            ) : (
+              <>Checking NASA FIRMS and Ambee Fire API • Auto-refreshes every 10 min</>
+            )}
+          </div>
+        </div>
+      )}
       <DisasterMap
         disasters={disasters}
         onDisasterClick={handleDisasterClick}
@@ -200,6 +384,7 @@ export function MapView({ onSaveSolution, onContactAuthority }: MapViewProps) {
       )}
       {selectedDisaster && (
         <>
+          {console.log('🎨 Rendering DisasterPanel for:', selectedDisaster.id)}
           <DisasterPanel
             disaster={selectedDisaster}
             onClose={handleClosePanel}
