@@ -145,7 +145,7 @@ export function DisasterMap({
     // Initialize map
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/dark-v11',
+      style: 'mapbox://styles/mapbox/satellite-streets-v12', // Shows satellite imagery with street labels
       center: [0, 20],
       zoom: 2,
     })

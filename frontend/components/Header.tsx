@@ -1,7 +1,7 @@
 // components/layout/Header.tsx
 'use client'
 
-import { Satellite } from "lucide-react"
+import { Satellite, MapPin } from "lucide-react"
 import { UserMenu } from "@/components/auth/user-menu"
 import Link from "next/link";
 import { Button } from "./ui/button";
@@ -56,8 +56,16 @@ export function Header() {
           </div>
         </nav>
 
-        {/* User menu */}
-        <UserMenu />
+        {/* Right side actions */}
+        <div className="flex items-center gap-3">
+          <Link href="/check-my-area">
+            <Button variant="outline" size="sm">
+              <MapPin className="h-4 w-4 mr-2" />
+              Check My Area
+            </Button>
+          </Link>
+          <UserMenu />
+        </div>
       </div>
     </header>
   )
