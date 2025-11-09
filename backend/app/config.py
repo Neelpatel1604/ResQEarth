@@ -62,6 +62,11 @@ class Settings(BaseSettings):
     USE_NATURAL_DISASTERS_API: bool = False  # Default to False to keep old behavior
     NATURAL_DISASTERS_CACHE_TTL: int = 600  # 10 minutes in seconds
     
+    # Twilio SendGrid Configuration
+    SENDGRID_API_KEY: Optional[str] = None
+    SENDGRID_FROM_EMAIL: str = "alerts@resqearth.com"
+    SENDGRID_FROM_NAME: str = "ResQ-Earth Alert System"
+    
     # Server Configuration
     HOST: str = "0.0.0.0"
     PORT: int = 8000
@@ -89,7 +94,8 @@ class Settings(BaseSettings):
         return self
     
     class Config:
-        env_file = ".env"
+        env_file = ".env.local"
+        env_file_encoding = "utf-8"
         case_sensitive = True
         extra = "ignore"  # Ignore extra fields like FIRMS_API
 

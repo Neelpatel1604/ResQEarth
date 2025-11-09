@@ -55,7 +55,10 @@ export function DisasterPanel({
     const actionInfo = PREVENTION_ACTIONS[type]
     const newAction: PreventionAction = {
       type,
-      location,
+      location: {
+        latitude: location.lat,
+        longitude: location.lng,
+      },
       cost: actionInfo.defaultCost,
       effectiveness: actionInfo.defaultEffectiveness,
       description: actionInfo.name,

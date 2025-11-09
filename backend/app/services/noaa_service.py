@@ -169,12 +169,7 @@ class NOAAWaterService:
                 "risk_level": "error",
                 "error": str(e)
             }
-
-
-# Singleton instance
-noaa_service = NOAAWaterService()
-
-
+    
     async def get_all_flood_risks(
         self,
         state: Optional[str] = None,
@@ -287,3 +282,7 @@ noaa_service = NOAAWaterService()
         ]
         
         return high_risk[:limit]
+
+
+# Singleton instance
+noaa_service = NOAAWaterService()
