@@ -174,3 +174,17 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# Documentation files created by Kiro/Claude
+DISASTER_ALERT_SYSTEM.md
+EMAIL_ALERT_STATUS.md
+QUICK_RUN_GUIDE.md
+SETUP_INSTRUCTIONS.md
+backend/API_EXAMPLES.sh
+backend/DEPLOYMENT_CHECKLIST.md
+backend/EMAIL_ALERTS_SETUP.md
+backend/QUICK_START.md
+backend/SYSTEM_FLOW.md
+backend/TWILIO_SENDGRID_SETUP.md
+backend/test_email_alerts.py
+start_alert_system.sh
