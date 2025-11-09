@@ -57,6 +57,11 @@ class Settings(BaseSettings):
     MAPBOX_API_KEY: Optional[str] = None
     FIRMS_MAP_KEY: Optional[str] = None
     
+    # Twilio SendGrid Configuration
+    SENDGRID_API_KEY: Optional[str] = None
+    SENDGRID_FROM_EMAIL: str = "alerts@resqearth.com"
+    SENDGRID_FROM_NAME: str = "ResQ-Earth Alert System"
+    
     # Server Configuration
     HOST: str = "0.0.0.0"
     PORT: int = 8000
@@ -84,7 +89,8 @@ class Settings(BaseSettings):
         return self
     
     class Config:
-        env_file = ".env"
+        env_file = ".env.local"
+        env_file_encoding = "utf-8"
         case_sensitive = True
         extra = "ignore"  # Ignore extra fields like FIRMS_API
 

@@ -1,14 +1,27 @@
 """FastAPI application entry point."""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from app.config import settings
-from app.routes import health, disasters, prevention
+from app.routes import health, disasters, prevention, alerts
+from app.scheduler import disaster_scheduler
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for startup and shutdown events."""
+    # Startup: Start the disaster monitoring scheduler
+    disaster_scheduler.start(interval_minutes=30)  # Check every 30 minutes
+    yield
+    # Shutdown: Stop the scheduler
+    disaster_scheduler.stop()
+
 
 # Create FastAPI app
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     description="API for ResQ-Earth PREVENT - Disaster prediction and prevention system",
+    lifespan=lifespan
 )
 
 # Configure CORS
@@ -27,6 +40,7 @@ app.add_middleware(
 app.include_router(health.router, prefix=settings.API_V1_PREFIX, tags=["health"])
 app.include_router(disasters.router, prefix=settings.API_V1_PREFIX, tags=["disasters"])
 app.include_router(prevention.router, prefix=settings.API_V1_PREFIX, tags=["prevention"])
+app.include_router(alerts.router, prefix=settings.API_V1_PREFIX, tags=["alerts"])
 
 
 @app.get("/")
