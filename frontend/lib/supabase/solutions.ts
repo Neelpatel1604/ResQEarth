@@ -3,7 +3,7 @@
  */
 
 import { createClient } from './client'
-import { DisasterThreat, PreventionAction } from '@/lib/map/dummy-data'
+import { DisasterThreat, PreventionAction } from '@/lib/map/data'
 
 export interface Solution {
   id?: string

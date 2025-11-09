@@ -5,7 +5,7 @@ import { useMemo, useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Slider } from '@/components/ui/slider'
 import { Label } from '@/components/ui/label'
-import { DisasterThreat, PreventionAction } from '@/lib/map/dummy-data'
+import { DisasterThreat, PreventionAction } from '@/lib/map/data'
 import { cn } from '@/lib/utils'
 
 interface ParameterControlsProps {

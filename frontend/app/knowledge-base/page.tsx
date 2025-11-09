@@ -1,8 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { Header } from '@/components/Header'
-import { Footer } from '@/components/Footer'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -49,11 +47,8 @@ export default function KnowledgeBasePage() {
     }
   }
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <Header />
-      
-      <main className="flex-1 pt-20 pb-8">
-        <div className="container mx-auto px-4 max-w-4xl">
+    <div className="pb-8">
+      <div className="container mx-auto px-4 max-w-4xl">
           {/* Header Section */}
           <div className="text-center mb-8">
             <div className="flex items-center justify-center gap-2 mb-4">
@@ -179,9 +174,6 @@ export default function KnowledgeBasePage() {
             </CardContent>
           </Card>
         </div>
-      </main>
-
-      <Footer />
     </div>
   )
 }

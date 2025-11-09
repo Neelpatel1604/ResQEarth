@@ -1,7 +1,7 @@
 /**
  * Report API client for PDF generation.
  */
-import { PreventionPlan } from '@/lib/map/dummy-data';
+import { PreventionPlan } from '@/lib/map/data';
 
 export interface ReportRequest {
   prevention_plan: PreventionPlan;

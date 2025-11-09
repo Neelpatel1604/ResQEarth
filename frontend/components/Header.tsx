@@ -34,13 +34,6 @@ export function Header() {
             </Link>
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/solutions">
-              <Button variant="ghost" size="sm">
-                My Solutions
-              </Button>
-            </Link>
-          </div>
-          <div className="flex items-center gap-4">
             <Link href="/analytics">
               <Button variant="ghost" size="sm">
                 Analytics

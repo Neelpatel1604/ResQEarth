@@ -21,8 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Satellite, ArrowLeft, Trash2, Eye, Loader2 } from 'lucide-react'
-import Link from 'next/link'
+import { Trash2, Eye, Loader2 } from 'lucide-react'
 import { getSolutions, Solution, deleteSolution } from '@/lib/supabase/solutions'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -112,28 +111,7 @@ export default function SolutionsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/">
-                <Button variant="ghost" size="icon">
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-              </Link>
-              <div className="flex items-center gap-2">
-                <Satellite className="h-8 w-8 text-primary" />
-                <h1 className="text-2xl font-bold">My Solutions</h1>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8">
         <Card>
           <CardHeader>
             <CardTitle>Saved Solutions</CardTitle>

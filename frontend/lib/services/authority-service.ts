@@ -2,7 +2,7 @@
  * Authority service for finding and contacting emergency authorities
  */
 
-import { Location } from '@/lib/map/dummy-data'
+import { Location } from '@/lib/map/data'
 
 export interface Authority {
   id: string

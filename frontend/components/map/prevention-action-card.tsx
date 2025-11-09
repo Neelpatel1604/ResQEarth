@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { PreventionActionType, PREVENTION_ACTIONS } from '@/lib/map/dummy-data'
+import { PreventionActionType, PREVENTION_ACTIONS } from '@/lib/map/data'
 import { cn } from '@/lib/utils'
 
 interface PreventionActionCardProps {

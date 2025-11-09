@@ -2,7 +2,7 @@
  * Prevention API client.
  */
 import { api } from './client';
-import { PreventionAction, DisasterThreat } from '@/lib/map/dummy-data';
+import { PreventionAction, DisasterThreat } from '@/lib/map/data';
 
 export interface PreventionPlan {
   threat_id: string;

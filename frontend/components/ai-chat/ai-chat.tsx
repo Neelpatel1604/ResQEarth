@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { sendChatMessage, ChatMessage } from '@/lib/api/chat'
-import { DisasterThreat } from '@/lib/map/dummy-data'
+import { DisasterThreat } from '@/lib/map/data'
 import { cn } from '@/lib/utils'
 
 interface AIChatProps {
