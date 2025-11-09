@@ -48,6 +48,13 @@ export function Header() {
             </Link>
           </div>
           <div className="flex items-center gap-4">
+            <Link href="/knowledge-base">
+              <Button variant="ghost" size="sm">
+                Knowledge Base
+              </Button>
+            </Link>
+          </div>
+          <div className="flex items-center gap-4">
             <Link href="/about">
               <Button variant="ghost" size="sm">
                 About Us

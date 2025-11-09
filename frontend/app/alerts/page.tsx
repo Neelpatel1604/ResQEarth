@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Bell, Send, Users, History, AlertTriangle } from 'lucide-react';
+import { Bell, Send, Users, History, AlertTriangle, Upload, FileText } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -17,6 +17,8 @@ export default function AlertsPage() {
   const [alertHistory, setAlertHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const [manualAlert, setManualAlert] = useState({
     disaster_type: 'flood',
@@ -132,6 +134,59 @@ export default function AlertsPage() {
     }
   };
 
+  const handleCsvUpload = async () => {
+    if (!csvFile) {
+      setMessage({ type: 'error', text: 'Please select a CSV file' });
+      return;
+    }
+
+    setUploading(true);
+    setMessage(null);
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', csvFile);
+
+      const response = await fetch(`${API_URL}/api/alerts/subscribers/upload-csv`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setMessage({ 
+          type: 'success', 
+          text: `CSV uploaded successfully! ${data.count} subscribers loaded.` 
+        });
+        setCsvFile(null);
+        // Reset file input
+        const fileInput = document.getElementById('csv-upload') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
+        // Refresh subscribers list
+        fetchSubscribers();
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to upload CSV' });
+      }
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message || 'Failed to upload CSV' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.name.endsWith('.csv')) {
+        setMessage({ type: 'error', text: 'Please select a CSV file' });
+        return;
+      }
+      setCsvFile(file);
+      setMessage(null);
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center gap-3">
@@ -144,6 +199,62 @@ export default function AlertsPage() {
           <AlertDescription>{message.text}</AlertDescription>
         </Alert>
       )}
+
+      {/* CSV Upload Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Upload className="h-5 w-5" />
+            Upload Subscribers CSV
+          </CardTitle>
+          <CardDescription>
+            Upload a CSV file with subscriber data. Format: email, name, location, disaster_types
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="csv-upload">CSV File</Label>
+            <div className="flex gap-3">
+              <Input
+                id="csv-upload"
+                type="file"
+                accept=".csv"
+                onChange={handleFileChange}
+                className="flex-1"
+                disabled={uploading}
+              />
+              <Button 
+                onClick={handleCsvUpload} 
+                disabled={uploading || !csvFile}
+                className="min-w-[120px]"
+              >
+                {uploading ? (
+                  <>Uploading...</>
+                ) : (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload CSV
+                  </>
+                )}
+              </Button>
+            </div>
+            {csvFile && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <FileText className="h-4 w-4" />
+                Selected: {csvFile.name}
+              </div>
+            )}
+          </div>
+          <div className="text-xs text-muted-foreground bg-muted p-3 rounded-md">
+            <strong>CSV Format:</strong>
+            <pre className="mt-1 text-xs">
+{`email,name,location,disaster_types
+user@example.com,John Doe,California,"flood,wildfire"
+jane@example.com,Jane Smith,Texas,"flood,hurricane"`}
+            </pre>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Subscribers Card */}
@@ -159,15 +270,21 @@ export default function AlertsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2 max-h-64 overflow-y-auto">
-              {subscribers.map((sub, idx) => (
-                <div key={idx} className="p-3 border rounded-lg">
-                  <div className="font-medium">{sub.name}</div>
-                  <div className="text-sm text-muted-foreground">{sub.email}</div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {sub.location} • {sub.disaster_types.join(', ')}
-                  </div>
+              {subscribers.length === 0 ? (
+                <div className="text-center text-muted-foreground py-8">
+                  No subscribers found. Upload a CSV file to add subscribers.
                 </div>
-              ))}
+              ) : (
+                subscribers.map((sub, idx) => (
+                  <div key={idx} className="p-3 border rounded-lg">
+                    <div className="font-medium">{sub.name}</div>
+                    <div className="text-sm text-muted-foreground">{sub.email}</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {sub.location} • {sub.disaster_types.join(', ')}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
@@ -179,7 +296,7 @@ export default function AlertsPage() {
             <CardDescription>Test and monitor the alert system</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button onClick={sendTestAlert} disabled={loading} className="w-full">
+            <Button onClick={sendTestAlert} disabled={loading || subscribers.length === 0} className="w-full">
               <Send className="mr-2 h-4 w-4" />
               Send Test Alert
             </Button>
