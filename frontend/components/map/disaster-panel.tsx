@@ -2,12 +2,11 @@
 
 import * as React from 'react'
 import { useState } from 'react'
-import { X, AlertTriangle, MapPin, Clock, Users, Save, Bot, ChevronDown, ChevronUp, FileDown, Loader2 } from 'lucide-react'
+import { X, AlertTriangle, MapPin, Clock, Users, Save, FileDown, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { DisasterThreat, PreventionAction, PreventionActionType, PREVENTION_ACTIONS } from '@/lib/map/dummy-data'
 import { ParameterControls } from './parameter-controls'
-import { AIChat } from '@/components/ai-chat/ai-chat'
 import { calculatePreventionPlan } from '@/lib/api/prevention'
 import { generateReport, downloadReport } from '@/lib/api/reports'
 import { cn } from '@/lib/utils'
@@ -31,7 +30,6 @@ export function DisasterPanel({
   actions: externalActions,
   onNavigateToLocation,
 }: DisasterPanelProps) {
-  const [showAIChat, setShowAIChat] = useState(false)
   const [isGeneratingReport, setIsGeneratingReport] = useState(false)
   
   // Use external actions if provided
@@ -192,38 +190,6 @@ export function DisasterPanel({
             </CardContent>
           </Card>
         )}
-
-        {/* AI Chat Assistant */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Bot className="h-5 w-5 text-primary" />
-                <CardTitle>AI Assistant</CardTitle>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowAIChat(!showAIChat)}
-                className="h-8 w-8"
-              >
-                {showAIChat ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-            <CardDescription>Ask questions about risks, prevention strategies, and satellite data</CardDescription>
-          </CardHeader>
-          {showAIChat && (
-            <CardContent className="p-0">
-              <div className="h-96">
-                <AIChat disaster={disaster} embedded />
-            </div>
-          </CardContent>
-          )}
-        </Card>
 
         {/* Parameter Controls */}
         {actions.length > 0 && (
