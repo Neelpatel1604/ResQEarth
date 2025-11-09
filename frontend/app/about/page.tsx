@@ -2,7 +2,6 @@
 
 import Particles from "@/components/Particles";
 import { Card, CardHeader, CardDescription, CardContent, CardTitle } from "@/components/ui/card";
-import { Users } from "lucide-react";
 
 export default function Page() {
     return (
@@ -27,66 +26,17 @@ export default function Page() {
                         <div className="max-w-2xl w-full text-center space-y-6">
                             <h1 className="text-4xl font-bold mb-2">About ResQ Earth</h1>
                             <p className="text-lg text-muted-foreground">
-                                ResQ Earth is an advanced space-based disaster response and monitoring platform that leverages satellite imagery and AI-powered analytics to provide real-time disaster detection, early warnings, and actionable insights for effective disaster management.
+                                The frontend of ResQ-Earth features an interactive 3D Earth interface that visualizes real-time wildfire, flood, and thunderstorm data. It provides a smooth, user-friendly experience where disaster markers update automatically as new satellite data arrives. Users can easily navigate the globe, view active alerts, and access essential information instantly. The interface also integrates the alert system and chatbot, making the platform accessible and intuitive for all users.
                             </p>
                         </div>
                         <Card className="max-w-2xl w-full mt-10">
                             <div className="p-6 space-y-4">
                                 <h2 className="text-2xl font-semibold">Our Mission</h2>
                                 <p className="text-muted-foreground">
-                                    At ResQ Earth, our mission is to harness the power of space technology and artificial intelligence to enhance global disaster response capabilities. We aim to provide timely and accurate information to aid organizations and governments in mitigating the impact of natural disasters on communities worldwide.
+                                    Our mission is to provide communities with fast, reliable, and accessible disaster information by unifying real-time satellite data, weather alerts, and prevention tools into one simple platform. We aim to empower people with early awareness so they can stay safe, prepared, and protected from environmental threats.
                                 </p>
                             </div>
                         </Card>
-                    </section>
-                    <section className="container mx-auto py-12 flex flex-col items-center">
-                        <h2 className="text-2xl font-bold mb-8 text-center">Meet the Team</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 w-full justify-items-center">
-                            <Card className="flex flex-col items-center text-center">
-                                <CardHeader className="pb-2 flex flex-col items-center">
-                                    <Users className="h-8 w-8 text-primary" />
-                                    <CardTitle className="text-sm mt-2">John Doe</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <CardDescription>
-                                        Lead Developer - Responsible for core architecture and backend implementation
-                                    </CardDescription>
-                                </CardContent>
-                            </Card>
-                            <Card className="flex flex-col items-center text-center">
-                                <CardHeader className="pb-2 flex flex-col items-center">
-                                    <Users className="h-8 w-8 text-primary" />
-                                    <CardTitle className="text-sm mt-2">Jane Smith</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <CardDescription>
-                                        UI/UX Designer - Created intuitive interfaces and user flows
-                                    </CardDescription>
-                                </CardContent>
-                            </Card>
-                            <Card className="flex flex-col items-center text-center">
-                                <CardHeader className="pb-2 flex flex-col items-center">
-                                    <Users className="h-8 w-8 text-primary" />
-                                    <CardTitle className="text-sm mt-2">Alex Johnson</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <CardDescription>
-                                        Data Scientist - Implemented AI models for predictive analytics
-                                    </CardDescription>
-                                </CardContent>
-                            </Card>
-                            <Card className="flex flex-col items-center text-center">
-                                <CardHeader className="pb-2 flex flex-col items-center">
-                                    <Users className="h-8 w-8 text-primary" />
-                                    <CardTitle className="text-sm mt-2">Emily Davis</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <CardDescription>
-                                        Project Manager - Coordinated team efforts and ensured timely delivery
-                                    </CardDescription>
-                                </CardContent>
-                            </Card>
-                        </div>
                     </section>
                 </main>
             </div>
