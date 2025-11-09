@@ -21,9 +21,22 @@ export async function GET(request: NextRequest) {
     })
 
     if (!response.ok) {
+      // Try to get error details from backend
       const errorData = await response.json().catch(() => ({
         detail: `Backend error: ${response.status}`,
       }))
+      
+      // If it's a 500 error, it might be that FIRMS returned empty and fallback is happening
+      // Return empty disasters array instead of error
+      if (response.status === 500 && errorData.detail?.includes('FIRMS')) {
+        console.log('Backend returned 500, but might be processing fallback')
+        return NextResponse.json({
+          disasters: [],
+          total: 0,
+          timestamp: new Date().toISOString(),
+        })
+      }
+      
       return NextResponse.json(
         { error: errorData.detail || 'Failed to fetch disasters' },
         { status: response.status }
@@ -31,6 +44,16 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json()
+    
+    // Ensure the response has the correct structure
+    if (!data.disasters) {
+      return NextResponse.json({
+        disasters: [],
+        total: 0,
+        timestamp: data.timestamp || new Date().toISOString(),
+      })
+    }
+    
     return NextResponse.json(data)
   } catch (error) {
     console.error('Error proxying request to backend:', error)

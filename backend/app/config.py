@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     NASA_API_KEY: Optional[str] = None
     MAPBOX_API_KEY: Optional[str] = None
     FIRMS_MAP_KEY: Optional[str] = None
+    AMBEE_API_KEY: Optional[str] = None
     
     # Server Configuration
     HOST: str = "0.0.0.0"

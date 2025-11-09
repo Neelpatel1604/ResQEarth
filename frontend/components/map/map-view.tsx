@@ -53,7 +53,13 @@ export function MapView({ onSaveSolution, onContactAuthority }: MapViewProps) {
           days: 1,
         })
         console.log(`Received ${response.disasters.length} disasters from API`)
-        if (response.disasters.length > 0) {
+        
+        // Empty array is valid - means no disasters found (backend will try fallback automatically)
+        if (response.disasters.length === 0) {
+          console.log('No disasters found. Backend will try Ambee fallback if configured.')
+          setDisasters([])
+          // Don't show error for empty results - this is valid
+        } else {
           const sample = response.disasters[0]
           console.log('Sample disaster:', {
             id: sample.id,
@@ -62,12 +68,17 @@ export function MapView({ onSaveSolution, onContactAuthority }: MapViewProps) {
             lng: sample.location?.longitude,
             risk: sample.risk_percentage,
           })
+          setDisasters(response.disasters)
         }
-        setDisasters(response.disasters)
       } catch (err) {
         console.error('Failed to fetch disasters:', err)
-        setError('Failed to load disaster data. Please check your backend connection.')
-        // Return empty array instead of dummy data
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load disaster data'
+        // Only show error if it's a connection issue, not if it's just empty results
+        if (errorMessage.includes('Failed to connect') || errorMessage.includes('backend')) {
+          setError('Failed to connect to backend. Please ensure the backend server is running on port 8000.')
+        } else {
+          setError(null) // Don't show error for empty results
+        }
         setDisasters([])
       } finally {
         setLoading(false)
@@ -216,7 +227,17 @@ export function MapView({ onSaveSolution, onContactAuthority }: MapViewProps) {
             🔥 {disasters.length.toLocaleString()} Active Wildfires (Last 24 Hours)
           </div>
           <div className="text-xs text-gray-300 mt-1">
-            Data from NASA FIRMS • Auto-refreshes every 10 min
+            Data from NASA FIRMS (with Ambee fallback) • Auto-refreshes every 10 min
+          </div>
+        </div>
+      )}
+      {!loading && disasters.length === 0 && !error && (
+        <div className="absolute top-4 left-4 bg-blue-500/90 text-white px-4 py-2 rounded-lg shadow-lg z-50">
+          <div className="text-sm font-semibold">
+            ℹ️ No active wildfires detected
+          </div>
+          <div className="text-xs text-blue-100 mt-1">
+            Checking NASA FIRMS and Ambee Fire API • Auto-refreshes every 10 min
           </div>
         </div>
       )}

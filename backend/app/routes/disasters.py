@@ -9,6 +9,7 @@ from app.models.schemas import (
     DisasterListResponse,
 )
 from app.services.firms_service import get_firms_service
+from app.services.ambee_service import get_ambee_service
 from datetime import datetime, timedelta
 import logging
 
@@ -38,24 +39,49 @@ async def list_disasters(
     """
     disasters: List[DisasterThreat] = []
     
-    # Fetch data from FIRMS API
+    # Fetch data from FIRMS API (primary source)
     if use_firms:
         try:
             firms_service = get_firms_service()
             disasters = firms_service.fetch_wildfire_data(days=days, bbox=bbox)
             logger.info(f"Fetched {len(disasters)} disasters from FIRMS API")
             
-            # If FIRMS returns empty data, return empty list
+            # If FIRMS returns 0 elements (empty list), fallback to Ambee
             if len(disasters) == 0:
-                logger.warning("FIRMS API returned no data.")
+                logger.warning("FIRMS API returned 0 elements. Falling back to Ambee Fire API.")
+                try:
+                    ambee_service = get_ambee_service()
+                    # No filters applied to Ambee - returns all fires
+                    disasters = ambee_service.fetch_wildfire_data()
+                    if len(disasters) > 0:
+                        logger.info(f"Successfully fetched {len(disasters)} disasters from Ambee Fire API (fallback)")
+                    else:
+                        logger.warning("Ambee Fire API also returned 0 elements after filtering.")
+                except Exception as ambee_error:
+                    logger.error(f"Error fetching Ambee fallback data: {ambee_error}")
+                    disasters = []
         except Exception as e:
-            logger.error(f"Error fetching FIRMS data: {e}")
-            # Return empty list on error instead of fallback
-            disasters = []
+            logger.error(f"Error fetching FIRMS data: {e}. Falling back to Ambee Fire API.")
+            # Try Ambee as fallback when FIRMS fails
+            try:
+                ambee_service = get_ambee_service()
+                # No filters applied to Ambee - returns all fires
+                disasters = ambee_service.fetch_wildfire_data()
+                logger.info(f"Fetched {len(disasters)} disasters from Ambee Fire API (fallback)")
+            except Exception as ambee_error:
+                logger.error(f"Error fetching Ambee fallback data: {ambee_error}")
+                disasters = []
     else:
-        # If FIRMS is disabled, return empty list
-        logger.warning("FIRMS API is disabled. Returning empty disaster list.")
-        disasters = []
+        # If FIRMS is disabled, try Ambee directly
+        logger.info("FIRMS API is disabled. Using Ambee Fire API.")
+        try:
+            ambee_service = get_ambee_service()
+            # No filters applied to Ambee - returns all fires
+            disasters = ambee_service.fetch_wildfire_data()
+            logger.info(f"Fetched {len(disasters)} disasters from Ambee Fire API")
+        except Exception as ambee_error:
+            logger.error(f"Error fetching Ambee data: {ambee_error}")
+            disasters = []
     
     # Apply filters
     if disaster_type:
@@ -82,9 +108,22 @@ async def get_disaster(threat_id: str):
     - **threat_id**: Unique threat identifier
     """
     # Fetch from FIRMS API and find the matching disaster
+    disasters = []
     try:
         firms_service = get_firms_service()
         disasters = firms_service.fetch_wildfire_data(days=10)  # Fetch last 10 days to find the threat
+        
+        # If FIRMS returns 0 elements, try Ambee fallback
+        if len(disasters) == 0:
+            logger.warning("FIRMS API returned 0 elements. Trying Ambee Fire API fallback.")
+            try:
+                ambee_service = get_ambee_service()
+                # No filters applied to Ambee - returns all fires
+                disasters = ambee_service.fetch_wildfire_data()
+                if len(disasters) > 0:
+                    logger.info(f"Successfully fetched {len(disasters)} disasters from Ambee Fire API (fallback)")
+            except Exception as ambee_error:
+                logger.error(f"Error fetching Ambee fallback data: {ambee_error}")
         
         disaster = next((d for d in disasters if d.id == threat_id), None)
         
@@ -99,6 +138,18 @@ async def get_disaster(threat_id: str):
         raise
     except Exception as e:
         logger.error(f"Error fetching disaster {threat_id}: {e}")
+        # Try Ambee as last resort
+        if not disasters:
+            try:
+                ambee_service = get_ambee_service()
+                # No filters applied to Ambee - returns all fires
+                disasters = ambee_service.fetch_wildfire_data()
+                disaster = next((d for d in disasters if d.id == threat_id), None)
+                if disaster:
+                    return disaster
+            except Exception:
+                pass
+        
         raise HTTPException(
             status_code=404,
             detail=f"Disaster threat with ID '{threat_id}' not found"
@@ -107,18 +158,40 @@ async def get_disaster(threat_id: str):
 
 @router.get("/disasters/count/total")
 async def get_total_disaster_count():
-    """Get total count of active disaster threats from FIRMS API."""
+    """Get total count of active disaster threats from FIRMS API (with Ambee fallback)."""
+    disasters = []
     try:
         firms_service = get_firms_service()
         disasters = firms_service.fetch_wildfire_data(days=1)  # Last 24 hours
+        
+        # If FIRMS returns 0 elements, try Ambee fallback
+        if len(disasters) == 0:
+            logger.warning("FIRMS API returned 0 elements. Trying Ambee Fire API fallback.")
+            try:
+                ambee_service = get_ambee_service()
+                disasters = ambee_service.fetch_wildfire_data()
+                if len(disasters) > 0:
+                    logger.info(f"Successfully fetched {len(disasters)} disasters from Ambee Fire API (fallback)")
+            except Exception as ambee_error:
+                logger.error(f"Error fetching Ambee fallback data: {ambee_error}")
+        
         return {
             "total": len(disasters),
             "timestamp": datetime.utcnow().isoformat(),
         }
     except Exception as e:
         logger.error(f"Error fetching disaster count: {e}")
-        return {
-            "total": 0,
-            "timestamp": datetime.utcnow().isoformat(),
-        }
+        # Try Ambee as last resort
+        try:
+            ambee_service = get_ambee_service()
+            disasters = ambee_service.fetch_wildfire_data()
+            return {
+                "total": len(disasters),
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        except Exception:
+            return {
+                "total": 0,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
 
