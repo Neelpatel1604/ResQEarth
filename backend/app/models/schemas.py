@@ -7,11 +7,23 @@ from enum import Enum
 
 class DisasterType(str, Enum):
     """Types of disasters that can be predicted."""
+    # Existing types
     WILDFIRE = "wildfire"
     FLOOD = "flood"
     THUNDERSTORM = "thunderstorm"
     HEATWAVE = "heatwave"
     VOLCANIC_ASH = "volcanic_ash"
+    # Ambeedata Natural Disasters API types
+    EARTHQUAKE = "earthquake"  # EQ
+    TROPICAL_CYCLONE = "tropical_cyclone"  # TC
+    EXTREME_TEMPERATURE = "extreme_temperature"  # ET
+    DROUGHT = "drought"  # DR
+    SEVERE_STORM = "severe_storm"  # SW
+    SEA_ICE = "sea_ice"  # SI
+    VOLCANO = "volcano"  # VO
+    LANDSLIDE = "landslide"  # LS
+    TSUNAMI = "tsunami"  # TN
+    MISCELLANEOUS = "miscellaneous"  # Misc
 
 
 class PreventionActionType(str, Enum):

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useAuth } from "@/hooks/useAuth"
 import { AuthForm } from "@/components/auth/auth-form"
 import { UserMenu } from "@/components/auth/user-menu"
@@ -12,6 +13,7 @@ import Link from "next/link"
 
 export default function Home() {
   const { user, loading } = useAuth()
+  const [showAllDisasters, setShowAllDisasters] = useState(false)
 
   // Check if Supabase is configured
   const hasSupabase = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -140,9 +142,15 @@ export default function Home() {
               <Satellite className="h-8 w-8 text-primary" />
               <h1 className="text-2xl font-bold">ResQ Earth</h1>
             </div>
-            <DisasterCounter />
+            <DisasterCounter showAllDisasters={showAllDisasters} />
           </div>
           <div className="flex items-center gap-4">
+            <Link href="/check-my-area">
+              <Button variant="outline" size="sm">
+                <MapPin className="h-4 w-4 mr-2" />
+                Check My Area
+              </Button>
+            </Link>
             <Link href="/solutions">
               <Button variant="ghost" size="sm">
                 My Solutions
@@ -156,6 +164,7 @@ export default function Home() {
       {/* Map View */}
       <main className="flex-1 relative">
         <MapView
+          onToggleChange={setShowAllDisasters}
           onSaveSolution={async (disaster, actions) => {
             try {
               const { saveSolution, createSolutionFromData } = await import('@/lib/supabase/solutions')
