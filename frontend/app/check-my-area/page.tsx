@@ -24,6 +24,7 @@ export default function CheckMyAreaPage() {
   >([])
   const [panelActions, setPanelActions] = useState<PreventionAction[]>([])
   const [navigateToLocation, setNavigateToLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   
   // Location input state
@@ -47,8 +48,15 @@ export default function CheckMyAreaPage() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setLat(position.coords.latitude.toFixed(6))
-          setLng(position.coords.longitude.toFixed(6))
+          const lat = position.coords.latitude.toFixed(6)
+          const lng = position.coords.longitude.toFixed(6)
+          setLat(lat)
+          setLng(lng)
+          // Also set user location for the pin
+          setUserLocation({
+            lat: parseFloat(lat),
+            lng: parseFloat(lng),
+          })
         },
         (err) => {
           console.log('Geolocation error:', err)
@@ -158,12 +166,18 @@ export default function CheckMyAreaPage() {
         async (position) => {
           const userLat = position.coords.latitude.toFixed(6)
           const userLng = position.coords.longitude.toFixed(6)
+          const location = {
+            lat: parseFloat(userLat),
+            lng: parseFloat(userLng),
+          }
+          
           setLat(userLat)
           setLng(userLng)
+          setUserLocation(location) // Set user location for the pin FIRST
           setSearchMode('location')
           
-          // Wait a bit for state to update, then fetch disasters
-          await new Promise(resolve => setTimeout(resolve, 200))
+          // Small delay to ensure map updates with user location
+          await new Promise(resolve => setTimeout(resolve, 300))
           
           // Fetch disasters with the new location
           try {
@@ -174,8 +188,8 @@ export default function CheckMyAreaPage() {
             if (showAllDisasters) {
               // Check specific area using new endpoint
               const params: any = {
-                lat: parseFloat(userLat),
-                lng: parseFloat(userLng),
+                lat: location.lat,
+                lng: location.lng,
                 limit: 50,
               }
               if (disasterTypeFilter !== 'all') {
@@ -204,11 +218,8 @@ export default function CheckMyAreaPage() {
             console.log(`Received ${response.disasters.length} disasters from API`)
             setDisasters(response.disasters)
 
-            // Navigate to location
-            setNavigateToLocation({
-              lat: parseFloat(userLat),
-              lng: parseFloat(userLng),
-            })
+            // Don't set navigateToLocation here - let userLocation handle the centering
+            // setNavigateToLocation(location)
           } catch (err) {
             console.error('Failed to fetch disasters:', err)
             const errorMessage = err instanceof Error ? err.message : 'Failed to load disaster data'
@@ -554,6 +565,7 @@ export default function CheckMyAreaPage() {
               handleActionDrop(actionType as PreventionActionType, location)
             }}
             navigateToLocation={navigateToLocation}
+            userLocation={userLocation}
           />
 
           {selectedDisaster && (

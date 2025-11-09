@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.routes import health, disasters, prevention
+from app.routes import health, disasters, prevention, chat, reports
 
 # Create FastAPI app
 app = FastAPI(
@@ -27,6 +27,8 @@ app.add_middleware(
 app.include_router(health.router, prefix=settings.API_V1_PREFIX, tags=["health"])
 app.include_router(disasters.router, prefix=settings.API_V1_PREFIX, tags=["disasters"])
 app.include_router(prevention.router, prefix=settings.API_V1_PREFIX, tags=["prevention"])
+app.include_router(chat.router, prefix=settings.API_V1_PREFIX, tags=["chat"])
+app.include_router(reports.router, prefix=settings.API_V1_PREFIX, tags=["reports"])
 
 
 @app.get("/")

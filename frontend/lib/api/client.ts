@@ -53,6 +53,13 @@ export class ApiClient {
       
       return {} as T;
     } catch (error) {
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        // Network error - backend might not be running or CORS issue
+        throw new Error(
+          `Cannot connect to backend API at ${url}. ` +
+          `Please ensure the backend server is running at ${this.baseUrl} and CORS is configured correctly.`
+        );
+      }
       if (error instanceof Error) {
         throw error;
       }

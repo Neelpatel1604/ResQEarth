@@ -2,12 +2,14 @@
 
 import * as React from 'react'
 import { useState } from 'react'
-import { X, AlertTriangle, MapPin, Clock, Users, Save, Phone } from 'lucide-react'
+import { X, AlertTriangle, MapPin, Clock, Users, Save, Bot, ChevronDown, ChevronUp, FileDown, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { DisasterThreat, PreventionAction, PreventionActionType, PREVENTION_ACTIONS } from '@/lib/map/dummy-data'
-import { PreventionActionCard } from './prevention-action-card'
 import { ParameterControls } from './parameter-controls'
+import { AIChat } from '@/components/ai-chat/ai-chat'
+import { calculatePreventionPlan } from '@/lib/api/prevention'
+import { generateReport, downloadReport } from '@/lib/api/reports'
 import { cn } from '@/lib/utils'
 
 interface DisasterPanelProps {
@@ -29,47 +31,13 @@ export function DisasterPanel({
   actions: externalActions,
   onNavigateToLocation,
 }: DisasterPanelProps) {
-  const [internalActions, setInternalActions] = useState<PreventionAction[]>([])
-  const [draggingAction, setDraggingAction] = useState<PreventionActionType | null>(null)
+  const [showAIChat, setShowAIChat] = useState(false)
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false)
   
-  // Use external actions if provided, otherwise use internal state
-  const actions = externalActions || internalActions
+  // Use external actions if provided
+  const actions = externalActions || []
 
   if (!disaster) return null
-
-  const handleDragStart = (type: PreventionActionType) => {
-    setDraggingAction(type)
-  }
-
-  const handleDragEnd = () => {
-    setDraggingAction(null)
-  }
-
-  const handleAddAction = (type: PreventionActionType, location: { lat: number; lng: number }) => {
-    if (externalActions) {
-      // If external actions are provided, notify parent instead
-      onActionDrop?.(type, location)
-      return
-    }
-    
-    const actionInfo = PREVENTION_ACTIONS[type]
-    const newAction: PreventionAction = {
-      type,
-      location,
-      cost: actionInfo.defaultCost,
-      effectiveness: actionInfo.defaultEffectiveness,
-      description: actionInfo.name,
-    }
-    setInternalActions([...internalActions, newAction])
-  }
-
-  // Handle action drop from map - this is called by the map component
-  React.useEffect(() => {
-    if (onActionDrop) {
-      // Store the callback to be used when action is dropped
-      // The map-view component will handle the actual drop coordination
-    }
-  }, [onActionDrop])
 
   const handleSave = () => {
     if (onSave) {
@@ -77,11 +45,37 @@ export function DisasterPanel({
     }
   }
 
-  const handleContact = () => {
-    if (onContactAuthority) {
-      onContactAuthority(disaster)
+  const handleExportReport = async () => {
+    if (actions.length === 0) {
+      alert('Please add prevention actions before generating a report.')
+      return
+    }
+
+    setIsGeneratingReport(true)
+    try {
+      // First, calculate the prevention plan using the backend
+      const preventionPlan = await calculatePreventionPlan({
+        threat_id: disaster.id,
+        actions: actions,
+      })
+
+      // Generate and download the PDF report
+      const pdfBlob = await generateReport({
+        prevention_plan: preventionPlan,
+        threat_id: disaster.id,
+        include_simulation: true,
+      })
+
+      const filename = `prevention_report_${disaster.id}_${new Date().toISOString().split('T')[0]}.pdf`
+      downloadReport(pdfBlob, filename)
+    } catch (error) {
+      console.error('Error generating report:', error)
+      alert(`Failed to generate report: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsGeneratingReport(false)
     }
   }
+
 
   const getDisasterTypeLabel = (type: string) => {
     return type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ')
@@ -199,25 +193,36 @@ export function DisasterPanel({
           </Card>
         )}
 
-        {/* Prevention Actions */}
+        {/* AI Chat Assistant */}
         <Card>
           <CardHeader>
-            <CardTitle>Prevention Actions</CardTitle>
-            <CardDescription>Drag actions onto the map to deploy them</CardDescription>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bot className="h-5 w-5 text-primary" />
+                <CardTitle>AI Assistant</CardTitle>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowAIChat(!showAIChat)}
+                className="h-8 w-8"
+              >
+                {showAIChat ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            <CardDescription>Ask questions about risks, prevention strategies, and satellite data</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-2">
-              {(Object.keys(PREVENTION_ACTIONS) as PreventionActionType[]).map((type) => (
-                <PreventionActionCard
-                  key={type}
-                  type={type}
-                  onDragStart={handleDragStart}
-                  onDragEnd={handleDragEnd}
-                  isDragging={draggingAction === type}
-                />
-              ))}
+          {showAIChat && (
+            <CardContent className="p-0">
+              <div className="h-96">
+                <AIChat disaster={disaster} embedded />
             </div>
           </CardContent>
+          )}
         </Card>
 
         {/* Parameter Controls */}
@@ -270,13 +275,27 @@ export function DisasterPanel({
 
       {/* Footer Actions */}
       <div className="p-4 border-t space-y-2">
+        <Button 
+          className="w-full" 
+          onClick={handleExportReport} 
+          disabled={actions.length === 0 || isGeneratingReport}
+          variant="default"
+        >
+          {isGeneratingReport ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Generating Report...
+            </>
+          ) : (
+            <>
+              <FileDown className="h-4 w-4 mr-2" />
+              Export PDF Report
+            </>
+          )}
+        </Button>
         <Button className="w-full" onClick={handleSave} disabled={actions.length === 0}>
           <Save className="h-4 w-4 mr-2" />
           Save Solution
-        </Button>
-        <Button variant="outline" className="w-full" onClick={handleContact}>
-          <Phone className="h-4 w-4 mr-2" />
-          Contact Authority
         </Button>
       </div>
     </div>

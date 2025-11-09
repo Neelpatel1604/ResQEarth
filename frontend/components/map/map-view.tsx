@@ -9,7 +9,8 @@ import { Authority } from '@/lib/services/authority-service'
 import { getDisasters, getAllDisasters } from '@/lib/api/disasters'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
-import { Flame, AlertTriangle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Flame, AlertTriangle, Navigation, Loader2 } from 'lucide-react'
 
 interface MapViewProps {
   onSaveSolution?: (disaster: DisasterThreat, actions: PreventionAction[]) => void
@@ -29,6 +30,8 @@ export function MapView({ onSaveSolution, onContactAuthority, onToggleChange }: 
   const [panelActions, setPanelActions] = useState<PreventionAction[]>([])
   const [contactModalOpen, setContactModalOpen] = useState(false)
   const [navigateToLocation, setNavigateToLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [isLocating, setIsLocating] = useState(false)
   const [dropFeedback, setDropFeedback] = useState<{ 
     message: string
     timestamp: number
@@ -224,6 +227,36 @@ export function MapView({ onSaveSolution, onContactAuthority, onToggleChange }: 
     [onContactAuthority, selectedDisaster]
   )
 
+  const handleLocateMe = useCallback(() => {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser.')
+      return
+    }
+
+    setIsLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const location = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        }
+        setUserLocation(location)
+        setNavigateToLocation(location)
+        setIsLocating(false)
+      },
+      (error) => {
+        console.error('Geolocation error:', error)
+        setIsLocating(false)
+        alert(`Unable to get your location: ${error.message}`)
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    )
+  }, [])
+
   // Convert prevention actions to format expected by map
   const mapActions = preventionActions.map((action) => ({
     id: action.id,
@@ -233,6 +266,29 @@ export function MapView({ onSaveSolution, onContactAuthority, onToggleChange }: 
 
   return (
     <div className="relative w-full h-screen">
+      {/* Locate Me Button */}
+      <div className="absolute top-20 left-4 z-50">
+        <Button
+          onClick={handleLocateMe}
+          disabled={isLocating}
+          variant="default"
+          size="sm"
+          className="bg-background/90 backdrop-blur-sm border shadow-lg"
+        >
+          {isLocating ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Locating...
+            </>
+          ) : (
+            <>
+              <Navigation className="h-4 w-4 mr-2" />
+              Locate Me
+            </>
+          )}
+        </Button>
+      </div>
+
       {/* Toggle between All Disasters and Fire Only */}
       <div className="absolute top-4 right-4 z-50 bg-background/90 backdrop-blur-sm rounded-lg border shadow-lg p-3 min-w-[280px]">
         <div className="flex items-center gap-3">
@@ -347,6 +403,7 @@ export function MapView({ onSaveSolution, onContactAuthority, onToggleChange }: 
           handleActionDrop(actionType as PreventionActionType, location)
         }}
         navigateToLocation={navigateToLocation}
+        userLocation={userLocation}
       />
       {/* Enhanced Drop feedback toast */}
       {dropFeedback && (

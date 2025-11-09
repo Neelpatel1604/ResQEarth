@@ -9,6 +9,12 @@ from app.models.schemas import (
     PreventionActionType,
 )
 from app.services.firms_service import get_firms_service
+from app.services.ai_service import (
+    optimize_prevention_plan,
+    calculate_risk_reduction,
+    calculate_total_cost,
+    ACTION_EFFECTIVENESS,
+)
 from datetime import datetime
 import time
 import logging
@@ -49,57 +55,41 @@ async def calculate_prevention_plan(request: PreventionPlanRequest):
             detail=f"Disaster threat with ID '{request.threat_id}' not found"
         )
     
-    # Calculate total cost
-    total_cost = sum(action.cost for action in request.actions)
-    
-    # Check budget limit
-    if request.budget_limit is not None and total_cost > request.budget_limit:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Total cost ${total_cost:,.2f} exceeds budget limit ${request.budget_limit:,.2f}"
-        )
-    
-    # Calculate risk reduction based on actions
-    # This is a simplified calculation - in production, this would use the genetic algorithm
+    # Use genetic algorithm to optimize prevention plan
     initial_risk = threat.risk_percentage
     
-    # Calculate effectiveness of each action type
-    action_effectiveness = {
-        PreventionActionType.GOATS: 15.0,
-        PreventionActionType.CONTROLLED_BURN: 25.0,
-        PreventionActionType.WATER_BOMBER: 30.0,
-        PreventionActionType.DRONE_SEED_BOMB: 10.0,
-        PreventionActionType.COMMUNITY_ALERT: 5.0,
-        PreventionActionType.RETASK_SATELLITE: 8.0,
-        PreventionActionType.AI_KILL_SWITCH: 50.0,  # Auto-solve
-    }
-    
-    # Calculate cumulative risk reduction
-    risk_reduction = 0.0
+    # Set default effectiveness for actions that don't have it
     for action in request.actions:
-        base_effectiveness = action_effectiveness.get(action.type, 5.0)
-        # Scale by quantity if applicable
-        quantity_multiplier = 1.0 + (action.quantity or 1) * 0.1
-        effectiveness = min(base_effectiveness * quantity_multiplier, 100.0)
-        risk_reduction += effectiveness
+        if action.effectiveness is None:
+            action.effectiveness = ACTION_EFFECTIVENESS.get(action.type, 5.0)
     
-    # Cap risk reduction to not exceed initial risk
-    risk_reduction = min(risk_reduction, initial_risk)
+    # Use genetic algorithm to optimize action selection
+    calculation_start = time.time()
+    
+    # If budget limit is provided, use genetic algorithm to optimize
+    if request.budget_limit is not None and request.budget_limit > 0:
+        optimized_actions = optimize_prevention_plan(
+            actions=request.actions,
+            budget_limit=request.budget_limit,
+            initial_risk=initial_risk,
+            population_size=50,
+            generations=30,
+        )
+    else:
+        # If no budget limit, use all actions (but still calculate properly)
+        optimized_actions = request.actions
+    
+    calculation_time = time.time() - calculation_start
+    
+    # Calculate risk reduction using the optimized actions
+    risk_reduction = calculate_risk_reduction(optimized_actions, initial_risk)
     final_risk = max(0.0, initial_risk - risk_reduction)
     
-    # Simulate AI calculation time (1.2 seconds as mentioned in README)
-    calculation_start = time.time()
-    time.sleep(0.1)  # Simulate processing (reduced for faster response)
-    calculation_time = time.time() - calculation_start
+    # Recalculate total cost with optimized actions
+    total_cost = calculate_total_cost(optimized_actions)
     
     # Determine if plan is successful (risk < 5%)
     success = final_risk < 5.0
-    
-    # Update actions with calculated effectiveness
-    optimized_actions = []
-    for action in request.actions:
-        action.effectiveness = action_effectiveness.get(action.type, 5.0)
-        optimized_actions.append(action)
     
     return PreventionPlan(
         threat_id=request.threat_id,

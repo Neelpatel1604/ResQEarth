@@ -45,6 +45,12 @@ export interface SatelliteData {
   population_at_risk?: number;
 }
 
+export interface DisasterListResponse {
+  disasters: DisasterThreat[];
+  total: number;
+  timestamp?: string;
+}
+
 export interface DisasterThreat {
   id: string;
   type: DisasterType;
@@ -64,6 +70,17 @@ export interface PreventionAction {
   cost: number;
   effectiveness?: number;
   description?: string;
+}
+
+export interface PreventionPlan {
+  threat_id: string;
+  initial_risk: number;
+  final_risk: number;
+  risk_reduction: number;
+  total_cost: number;
+  actions: PreventionAction[];
+  calculation_time: number;
+  success: boolean;
 }
 
 // Dummy disaster data with all disaster types for testing
