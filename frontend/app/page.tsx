@@ -9,6 +9,8 @@ import { Satellite, AlertTriangle, Users, MapPin } from "lucide-react"
 import { MapView } from "@/components/map/map-view"
 import { DisasterCounter } from "@/components/map/disaster-counter"
 import Link from "next/link"
+import { Header } from "@/components/Header"
+import { Footer } from "@/components/Footer"
 
 export default function Home() {
   const { user, loading } = useAuth()
@@ -69,56 +71,6 @@ export default function Home() {
                 Advanced space-based disaster response platform
               </p>
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <Satellite className="h-8 w-8 text-primary" />
-                  <CardTitle className="text-sm">Real-time Monitoring</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription>
-                    Satellite imagery and AI-powered disaster detection
-                  </CardDescription>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2">
-                  <AlertTriangle className="h-8 w-8 text-destructive" />
-                  <CardTitle className="text-sm">Early Warning</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription>
-                    Predictive analytics for disaster prevention
-                  </CardDescription>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2">
-                  <Users className="h-8 w-8 text-primary" />
-                  <CardTitle className="text-sm">Response Teams</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription>
-                    Coordinated emergency response coordination
-                  </CardDescription>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2">
-                  <MapPin className="h-8 w-8 text-primary" />
-                  <CardTitle className="text-sm">Global Coverage</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription>
-                    Worldwide disaster monitoring and response
-                  </CardDescription>
-                </CardContent>
-              </Card>
-            </div>
           </div>
 
           {/* Auth Form */}
@@ -133,52 +85,39 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Navigation Header */}
-      <header className="border-b z-50">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <Satellite className="h-8 w-8 text-primary" />
-              <h1 className="text-2xl font-bold">ResQ Earth</h1>
-            </div>
-            <DisasterCounter />
-          </div>
-          <div className="flex items-center gap-4">
-            <Link href="/solutions">
-              <Button variant="ghost" size="sm">
-                My Solutions
-              </Button>
-            </Link>
-            <UserMenu />
-          </div>
-        </div>
-      </header>
+      <Header />
 
-      {/* Map View */}
-      <main className="flex-1 relative">
-        <MapView
-          onSaveSolution={async (disaster, actions) => {
-            try {
-              const { saveSolution, createSolutionFromData } = await import('@/lib/supabase/solutions')
-              const solutionData = createSolutionFromData(disaster, actions)
-              const saved = await saveSolution(solutionData)
-              if (saved) {
-                alert('Solution saved successfully!')
-              } else {
-                // Table might not exist - show helpful message
-                alert('Solution saved locally. Note: Supabase table may need to be created.')
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col">
+
+        {/* Map View */}
+        <div className="flex-1 relative">
+          <MapView
+            onSaveSolution={async (disaster, actions) => {
+              try {
+                const { saveSolution, createSolutionFromData } = await import('@/lib/supabase/solutions')
+                const solutionData = createSolutionFromData(disaster, actions)
+                const saved = await saveSolution({ ...solutionData, user_id: user.id })
+                if (saved) {
+                  alert('Solution saved successfully!')
+                } else {
+                  // Table might not exist - show helpful message
+                  alert('Solution saved locally. Note: Supabase table may need to be created.')
+                }
+              } catch (error) {
+                console.error('Error saving solution:', error)
+                alert('Failed to save solution. Please check your Supabase configuration.')
               }
-            } catch (error) {
-              console.error('Error saving solution:', error)
-              alert('Failed to save solution. Please check your Supabase configuration.')
-            }
-          }}
-          onContactAuthority={(disaster) => {
-            // Open contact authority modal or redirect
-            const contactInfo = `Contact emergency authorities for ${disaster.location.name || 'this location'}`
-            alert(contactInfo)
-            // TODO: Implement proper contact authority flow
-          }}
-        />
+            }}
+            onContactAuthority={(disaster) => {
+              // Open contact authority modal or redirect
+              const contactInfo = `Contact emergency authorities for ${disaster.location.name || 'this location'}`
+              alert(contactInfo)
+              // TODO: Implement proper contact authority flow
+            }}
+            />
+            <Footer />
+        </div>
       </main>
     </div>
   )

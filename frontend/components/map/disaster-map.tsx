@@ -67,10 +67,6 @@ export function DisasterMap({
   const map = useRef<mapboxgl.Map | null>(null)
   const markersRef = useRef<mapboxgl.Marker[]>([])
   const actionMarkersRef = useRef<mapboxgl.Marker[]>([])
-  const sourceId = 'disasters-source'
-  const clusterLayerId = 'disasters-cluster'
-  const clusterCountLayerId = 'disasters-cluster-count'
-  const unclusteredPointLayerId = 'disasters-unclustered-point'
 
   useEffect(() => {
     if (!mapContainer.current || map.current) return
@@ -82,10 +78,10 @@ export function DisasterMap({
 
     mapboxgl.accessToken = MAPBOX_TOKEN
 
-    // Initialize map with satellite style to show terrain/landscape
+    // Initialize map
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/satellite-streets-v12', // Shows satellite imagery with street labels
+      style: 'mapbox://styles/mapbox/dark-v11',
       center: [0, 20],
       zoom: 2,
     })
@@ -95,168 +91,6 @@ export function DisasterMap({
 
     // Add fullscreen control
     map.current.addControl(new mapboxgl.FullscreenControl(), 'top-right')
-
-    // Wait for map to load before adding sources
-    map.current.on('load', () => {
-      if (!map.current) return
-
-      // Add source for disasters (will be populated when disasters change)
-      if (!map.current.getSource(sourceId)) {
-        map.current.addSource(sourceId, {
-          type: 'geojson',
-          data: {
-            type: 'FeatureCollection',
-            features: [],
-          },
-          cluster: true,
-          clusterMaxZoom: 14,
-          clusterRadius: 50,
-        })
-        
-        // Listen for data events to ensure source is ready
-        const source = map.current.getSource(sourceId) as mapboxgl.GeoJSONSource
-        if (source) {
-          source.on('data', () => {
-            console.log('Source data event fired')
-          })
-        }
-
-        // Add cluster circles layer
-        map.current.addLayer({
-          id: clusterLayerId,
-          type: 'circle',
-          source: sourceId,
-          filter: ['has', 'point_count'],
-          paint: {
-            'circle-color': [
-              'step',
-              ['get', 'point_count'],
-              '#ff6b35',
-              10,
-              '#ff4500',
-              50,
-              '#ff0000',
-            ],
-            'circle-radius': [
-              'step',
-              ['get', 'point_count'],
-              20,
-              10,
-              30,
-              50,
-              40,
-            ],
-            'circle-stroke-width': 2,
-            'circle-stroke-color': '#fff',
-          },
-        })
-
-        // Add cluster count labels
-        map.current.addLayer({
-          id: clusterCountLayerId,
-          type: 'symbol',
-          source: sourceId,
-          filter: ['has', 'point_count'],
-          layout: {
-            'text-field': '{point_count_abbreviated}',
-            'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-            'text-size': 12,
-          },
-          paint: {
-            'text-color': '#fff',
-          },
-        })
-
-        // Add unclustered points layer
-        map.current.addLayer({
-          id: unclusteredPointLayerId,
-          type: 'circle',
-          source: sourceId,
-          filter: ['!', ['has', 'point_count']],
-          paint: {
-            'circle-color': [
-              'match',
-              ['get', 'type'],
-              'wildfire',
-              '#ff6b35',
-              'flood',
-              '#4a90e2',
-              'thunderstorm',
-              '#8b5cf6',
-              'heatwave',
-              '#f59e0b',
-              '#ef4444',
-            ],
-            'circle-radius': [
-              'interpolate',
-              ['linear'],
-              ['get', 'risk'],
-              0,
-              12,
-              50,
-              16,
-              100,
-              20,
-            ],
-            'circle-stroke-width': 2,
-            'circle-stroke-color': '#fff',
-            'circle-opacity': [
-              'interpolate',
-              ['linear'],
-              ['get', 'risk'],
-              0,
-              0.6,
-              50,
-              0.8,
-              100,
-              1.0,
-            ],
-          },
-        })
-
-        // Add click handler for clusters
-        map.current.on('click', clusterLayerId, (e) => {
-          if (!map.current) return
-          const features = map.current.queryRenderedFeatures(e.point, {
-            layers: [clusterLayerId],
-          })
-          const clusterId = features[0]?.properties?.cluster_id
-          const source = map.current.getSource(sourceId) as mapboxgl.GeoJSONSource
-          source.getClusterExpansionZoom(clusterId, (err, zoom) => {
-            if (err || !map.current || zoom === null || zoom === undefined) return
-            map.current.easeTo({
-              center: (e.lngLat as any),
-              zoom: zoom,
-            })
-          })
-        })
-
-        // Add click handler for unclustered points
-        // Note: We'll handle this in a separate effect to access current disasters
-
-        // Change cursor on hover
-        map.current.on('mouseenter', clusterLayerId, () => {
-          if (map.current) {
-            map.current.getCanvas().style.cursor = 'pointer'
-          }
-        })
-        map.current.on('mouseleave', clusterLayerId, () => {
-          if (map.current) {
-            map.current.getCanvas().style.cursor = ''
-          }
-        })
-        map.current.on('mouseenter', unclusteredPointLayerId, () => {
-          if (map.current) {
-            map.current.getCanvas().style.cursor = 'pointer'
-          }
-        })
-        map.current.on('mouseleave', unclusteredPointLayerId, () => {
-          if (map.current) {
-            map.current.getCanvas().style.cursor = ''
-          }
-        })
-      }
-    })
 
     // Handle map click for dropping actions
     if (onActionDrop) {
@@ -323,219 +157,162 @@ export function DisasterMap({
     }
   }, [onActionDrop])
 
-  // Update disaster markers using Mapbox GL layers for better performance
+  // Update disaster markers
   useEffect(() => {
-    if (!map.current) {
-      console.log('Map not initialized yet')
-      return
-    }
+    if (!map.current) return
 
-    const updateDisasterData = () => {
-      if (!map.current || !map.current.isStyleLoaded()) return
+    // Clear existing markers
+    markersRef.current.forEach((marker) => marker.remove())
+    markersRef.current = []
 
-      const source = map.current.getSource(sourceId) as mapboxgl.GeoJSONSource
-      if (!source) {
-        console.log('Source not found')
-        return
-      }
-
-      // Convert disasters to GeoJSON features
-      console.log(`Processing ${disasters.length} disasters for map`)
-      
-      const features = disasters
-        .filter((disaster) => {
-          // Validate coordinates
-          const lat = disaster.location?.latitude
-          const lng = disaster.location?.longitude
-          
-          // Log first few disasters to see their structure
-          if (disasters.indexOf(disaster) < 3) {
-            console.log(`Disaster ${disasters.indexOf(disaster)}:`, {
-              id: disaster.id,
-              hasLocation: !!disaster.location,
-              lat: lat,
-              lng: lng,
-              locationObj: disaster.location,
-            })
-          }
-          
-          const isValid = 
-            disaster.location &&
-            typeof lat === 'number' &&
-            typeof lng === 'number' &&
-            !isNaN(lat) &&
-            !isNaN(lng) &&
-            lat >= -90 &&
-            lat <= 90 &&
-            lng >= -180 &&
-            lng <= 180 &&
-            lat !== 0 &&
-            lng !== 0  // Exclude 0,0 coordinates
-          
-          if (!isValid) {
-            console.warn(`Invalid coordinates for disaster ${disaster.id}:`, {
-              lat,
-              lng,
-              hasLocation: !!disaster.location,
-            })
-          }
-          return isValid
-        })
-        .map((disaster) => ({
-          type: 'Feature' as const,
-          geometry: {
-            type: 'Point' as const,
-            coordinates: [disaster.location.longitude, disaster.location.latitude],
-          },
-          properties: {
-            id: disaster.id,
-            type: disaster.type,
-            risk: disaster.risk_percentage,
-            confidence: disaster.confidence || 0,
-            selected: selectedDisasterId === disaster.id,
-          },
-        }))
-
-      console.log(`Updating map with ${features.length} disaster features (from ${disasters.length} total disasters)`)
-      
-      if (features.length === 0) {
-        console.warn('No valid features to display on map')
-        return
-      }
-
-      // Log first few features for debugging
-      if (features.length > 0) {
-        console.log('Sample features:', features.slice(0, 3).map(f => ({
-          id: f.properties.id,
-          coords: f.geometry.coordinates,
-          type: f.properties.type,
-          risk: f.properties.risk
-        })))
-      }
-
-      // Update source data
-      try {
-        source.setData({
-          type: 'FeatureCollection',
-          features,
-        })
-        console.log(`✅ Map source updated successfully with ${features.length} features`)
-      } catch (error) {
-        console.error('❌ Error updating map source:', error)
-      }
-
-      // Update layer styles for selected disaster
-      if (map.current.getLayer(unclusteredPointLayerId)) {
-      map.current.setPaintProperty(unclusteredPointLayerId, 'circle-stroke-width', [
-        'case',
-        ['get', 'selected'],
-        4,
-        2,
-      ])
-      map.current.setPaintProperty(unclusteredPointLayerId, 'circle-radius', [
-        'case',
-        ['get', 'selected'],
-        [
-          'interpolate',
-          ['linear'],
-          ['get', 'risk'],
-          0,
-          14,
-          50,
-          18,
-          100,
-          22,
-        ],
-        [
-          'interpolate',
-          ['linear'],
-          ['get', 'risk'],
-          0,
-          12,
-          50,
-          16,
-          100,
-          20,
-        ],
-      ])
-      }
-    }
-
-    // Wait for map to be ready
-    if (!map.current.isStyleLoaded()) {
-      console.log('Map style not loaded yet, waiting...')
-      const waitForStyle = () => {
-        if (map.current?.isStyleLoaded()) {
-          setTimeout(() => {
-            const source = map.current?.getSource(sourceId) as mapboxgl.GeoJSONSource
-            if (source) {
-              updateDisasterData()
-            }
-          }, 100)
-        } else {
-          setTimeout(waitForStyle, 100)
-        }
-      }
-      waitForStyle()
-      return
-    }
-
-    // Try to update immediately
-    const source = map.current.getSource(sourceId) as mapboxgl.GeoJSONSource
-    if (!source) {
-      console.log('Source not found, waiting...')
-      // Wait for source to be added (it's added in the 'load' event)
-      const waitForSource = () => {
-        if (map.current) {
-          const retrySource = map.current.getSource(sourceId) as mapboxgl.GeoJSONSource
-          if (retrySource) {
-            console.log('Source found, updating data')
-            updateDisasterData()
-          } else {
-            setTimeout(waitForSource, 100)
-          }
-        }
-      }
-      waitForSource()
-      return
-    }
-
-    // Source exists, update immediately
-    console.log('Source exists, updating data immediately')
-    updateDisasterData()
-  }, [disasters, selectedDisasterId])
-
-  // Handle clicks on unclustered points
-  useEffect(() => {
-    if (!map.current || !map.current.isStyleLoaded()) return
-
-    const handleClick = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+    // Create markers for each disaster
+    disasters.forEach((disaster) => {
       if (!map.current) return
-      const features = map.current.queryRenderedFeatures(e.point, {
-        layers: [unclusteredPointLayerId],
+
+      const IconComponent = getDisasterIcon(disaster.type)
+      const color = getDisasterColor(disaster.type, disaster.risk_percentage)
+      const isSelected = selectedDisasterId === disaster.id
+
+      // Create custom marker element
+      const el = document.createElement('div')
+      el.className = 'disaster-marker'
+      el.style.cssText = `
+        position: relative;
+        width: ${isSelected ? '48px' : '40px'};
+        height: ${isSelected ? '48px' : '40px'};
+        cursor: pointer;
+        transition: filter 0.2s ease;
+        z-index: ${isSelected ? '1000' : '1'};
+        pointer-events: auto;
+      `
+
+      // Create icon element (circular background)
+      const iconEl = document.createElement('div')
+      iconEl.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        background-color: ${color};
+        border: ${isSelected ? '3px' : '2px'} solid #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: ${isSelected
+          ? '0 0 0 4px rgba(255, 255, 255, 0.3)'
+          : '0 2px 8px rgba(0, 0, 0, 0.3)'};
+      `
+
+      // Create SVG icon (simplified)
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+      svg.setAttribute('width', '24')
+      svg.setAttribute('height', '24')
+      svg.setAttribute('viewBox', '0 0 24 24')
+      svg.setAttribute('fill', 'white')
+      svg.style.cssText = 'width: 60%; height: 60%;'
+
+      // Simple icon based on type
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+      if (disaster.type === 'wildfire') {
+        path.setAttribute(
+          'd',
+          'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5 14.5 7.62 14.5 9 13.38 11.5 12 11.5z'
+        )
+      } else if (disaster.type === 'flood') {
+        path.setAttribute(
+          'd',
+          'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'
+        )
+      } else {
+        path.setAttribute(
+          'd',
+          'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z'
+        )
+      }
+      svg.appendChild(path)
+      iconEl.appendChild(svg)
+      el.appendChild(iconEl)
+
+      // Add risk percentage badge
+      const riskPercent = Math.round(disaster.risk_percentage)
+      const badge = document.createElement('div')
+      badge.className = 'disaster-risk-badge'
+      badge.style.cssText = `
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        background-color: #ef4444;
+        color: white;
+        border-radius: 50%;
+        min-width: 22px;
+        height: 22px;
+        font-size: 11px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid white;
+        padding: 0 5px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        line-height: 1;
+        z-index: 10;
+        pointer-events: none;
+        white-space: nowrap;
+        box-sizing: border-box;
+      `
+      // Create span for text to ensure it's properly contained
+      const badgeText = document.createElement('span')
+      badgeText.textContent = riskPercent.toString()
+      badgeText.style.cssText = `
+        display: inline-block;
+        line-height: 1;
+      `
+      badge.appendChild(badgeText)
+      el.appendChild(badge)
+
+      // Create marker with proper anchor point
+      const marker = new mapboxgl.Marker({
+        element: el,
+        anchor: 'center', // Anchor at center to prevent movement
       })
-      if (features[0]?.properties) {
-        const disasterId = features[0].properties.id as string
-        const disaster = disasters.find((d) => d.id === disasterId)
-        if (disaster) {
+        .setLngLat([disaster.location.longitude, disaster.location.latitude])
+        .addTo(map.current)
+
+      // Add click handler
+      el.addEventListener('click', (e) => {
+        e.stopPropagation()
+        e.preventDefault()
+        // Fly to the disaster location
+        if (map.current) {
           map.current.flyTo({
             center: [disaster.location.longitude, disaster.location.latitude],
-            zoom: 10,
+            zoom: 8,
             duration: 1500,
+            essential: true,
           })
-          onDisasterClick?.(disaster)
         }
-      }
-    }
+        onDisasterClick?.(disaster)
+      })
 
-    map.current.on('click', unclusteredPointLayerId, handleClick)
+      // Add hover effect - use filter/opacity instead of scale to prevent movement
+      el.addEventListener('mouseenter', () => {
+        if (!isSelected) {
+          el.style.filter = 'brightness(1.2) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5))'
+          el.style.zIndex = '1000'
+        }
+      })
+      el.addEventListener('mouseleave', () => {
+        if (!isSelected) {
+          el.style.filter = 'none'
+          el.style.zIndex = '1'
+        }
+      })
 
-    return () => {
-      if (map.current) {
-        map.current.off('click', unclusteredPointLayerId, handleClick)
-      }
-    }
-  }, [disasters, onDisasterClick])
+      markersRef.current.push(marker)
+    })
+  }, [disasters, selectedDisasterId, onDisasterClick])
 
   // Update prevention action markers
   useEffect(() => {
